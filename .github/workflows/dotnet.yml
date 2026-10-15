@@ -10,7 +10,12 @@ on:
       - dev
       - master
       - main
+    tags:
+      - 'v*'
   pull_request:
+
+permissions:
+  contents: write
 
 jobs:
   build:
@@ -29,6 +34,11 @@ jobs:
           file: |
             "**/SolutionAssemblyInfo.cs"
           version: ${{ env.FlowVersion }}.${{ env.BUILD_NUMBER }}
+      - name: Build Rust Native Core
+        shell: powershell
+        run: |
+          cargo build --release --manifest-path Flow.Launcher.Native/Cargo.toml
+          Copy-Item Flow.Launcher.Native\target\release\flow_launcher_native.dll Flow.Launcher.Infrastructure\flow_launcher_native.dll -Force
       - name: Setup .NET
         uses: actions/setup-dotnet@v5
         with:
@@ -90,3 +100,13 @@ jobs:
           path: |
             Output\Packages\RELEASES
           compression-level: 0
+      - name: Publish GitHub Release
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            Output/Packages/Flow-Launcher-*.exe
+            Output/Packages/Flow-Launcher-Portable.zip
+            Output/Packages/FlowLauncher-*-full.nupkg
+            Output/Packages/RELEASES
+          generate_release_notes: true

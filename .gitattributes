@@ -63,3 +63,4 @@
 #*.RTF   diff=astextplain
 
 PythonHome/* linguist-vendored
+Flow.Launcher.Test/** linguist-vendored
