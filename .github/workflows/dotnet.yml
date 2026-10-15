@@ -40,7 +40,7 @@ jobs:
           cargo build --release --manifest-path Flow.Launcher.Native/Cargo.toml
           Copy-Item Flow.Launcher.Native\target\release\flow_launcher_native.dll Flow.Launcher.Infrastructure\flow_launcher_native.dll -Force
       - name: Setup .NET
-        uses: actions/setup-dotnet@v5
+        uses: actions/setup-dotnet@v6
         with:
           dotnet-version: 9.0.x
 #          cache: true
