@@ -11,7 +11,8 @@ namespace Flow.Launcher.Plugin.Note
     public class Main : IPlugin, IContextMenu
     {
         private PluginInitContext? _context;
-        private const string IconPath = "Images\\icon.png";
+        private string IconPath => _iconPath ??= Path.Combine(_context?.CurrentPluginMetadata.PluginDirectory ?? AppDomain.CurrentDomain.BaseDirectory, "Images", "icon.png");
+        private string? _iconPath;
         private string _storageFile = string.Empty;
         private readonly List<NoteItem> _notes = new();
         private readonly object _lock = new();

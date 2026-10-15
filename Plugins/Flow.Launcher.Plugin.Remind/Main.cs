@@ -14,7 +14,8 @@ namespace Flow.Launcher.Plugin.Remind
     public class Main : IPlugin, IContextMenu
     {
         private PluginInitContext? _context;
-        private const string IconPath = "Images\\icon.png";
+        private string IconPath => _iconPath ??= Path.Combine(_context?.CurrentPluginMetadata.PluginDirectory ?? AppDomain.CurrentDomain.BaseDirectory, "Images", "icon.png");
+        private string? _iconPath;
         private static readonly List<ActiveReminder> _activeReminders = new();
         private static readonly object _lock = new();
         private static System.Threading.Timer? _checkTimer;

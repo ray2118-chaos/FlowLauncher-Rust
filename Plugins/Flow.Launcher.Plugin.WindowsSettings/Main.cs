@@ -1,7 +1,9 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Globalization;
+using System.Linq;
 using System.Reflection;
+using Flow.Launcher.Infrastructure.Native;
 using Flow.Launcher.Plugin.WindowsSettings.Classes;
 using Flow.Launcher.Plugin.WindowsSettings.Helper;
 using Flow.Launcher.Plugin.WindowsSettings.Properties;
@@ -21,6 +23,7 @@ namespace Flow.Launcher.Plugin.WindowsSettings
         /// <summary>
         /// The initial context for this plugin (contains API and meta-data).
         /// </summary>
+        internal static PluginInitContext Context { get; private set; } = null!;
         private PluginInitContext? _context;
 
         /// <summary>
@@ -73,6 +76,7 @@ namespace Flow.Launcher.Plugin.WindowsSettings
         public void Init(PluginInitContext context)
         {
             _context = context ?? throw new ArgumentNullException(nameof(context));
+            Context = _context;
 
             _settingsList = JsonSettingsListHelper.ReadAllPossibleSettings();
             _settingsList = UnsupportedSettingsHelper.FilterByBuild(_settingsList);
@@ -81,6 +85,7 @@ namespace Flow.Launcher.Plugin.WindowsSettings
             ResultHelper.Init(_context.API);
 
             _translatedSettingList = TranslationHelper.TranslateAllSettings(_settingsList);
+            SyncNativeSettings();
         }
 
         /// <summary>
@@ -97,6 +102,28 @@ namespace Flow.Launcher.Plugin.WindowsSettings
         public void OnCultureInfoChanged(CultureInfo newCulture)
         {
             _translatedSettingList = TranslationHelper.TranslateAllSettings(_settingsList);
+            SyncNativeSettings();
+        }
+
+        private void SyncNativeSettings()
+        {
+            if (!Flow.Launcher.Infrastructure.Native.FlowNativeMethods.IsAvailable || _translatedSettingList == null) return;
+
+            Flow.Launcher.Infrastructure.Native.FlowNativeMethods.ClearWindowsSettings();
+            var list = _translatedSettingList as IList<WindowsSetting> ?? _translatedSettingList.ToList();
+            for (uint i = 0; i < list.Count; i++)
+            {
+                var item = list[(int)i];
+                var altNames = item.AltNames != null ? string.Join(' ', item.AltNames) : string.Empty;
+                var appType = item.Type == "AppSettingsApp" ? 0u : (item.Type == "ControlPanelApp" ? 1u : 2u);
+
+                Flow.Launcher.Infrastructure.Native.FlowNativeMethods.RegisterWindowsSetting(
+                    i,
+                    item.Name ?? string.Empty,
+                    item.Area ?? string.Empty,
+                    altNames,
+                    appType);
+            }
         }
 
         /// <summary>

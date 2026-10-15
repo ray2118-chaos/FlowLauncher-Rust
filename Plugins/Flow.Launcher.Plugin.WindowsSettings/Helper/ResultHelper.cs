@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.ComponentModel;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -48,9 +48,33 @@ namespace Flow.Launcher.Plugin.WindowsSettings.Helper
                 return GetDefaultResults(list, windowsSettingIconPath, controlPanelIconPath);
             }
 
+            var settingList = list as IList<WindowsSetting> ?? list.ToList();
+
+            if (Flow.Launcher.Infrastructure.Native.FlowNativeMethods.IsAvailable)
+            {
+                var matches = new Flow.Launcher.Infrastructure.Native.NativeSettingMatch[64];
+                int matchCount = Flow.Launcher.Infrastructure.Native.FlowNativeMethods.SearchWindowsSettings(query.Search, matches);
+                if (matchCount > 0)
+                {
+                    var results = new List<Result>(matchCount);
+                    for (int i = 0; i < matchCount; i++)
+                    {
+                        var id = (int)matches[i].Id;
+                        if (id >= 0 && id < settingList.Count)
+                        {
+                            var entry = settingList[id];
+                            var result = NewSettingResult(matches[i].Score, entry.Type, windowsSettingIconPath, controlPanelIconPath, entry);
+                            AddOptionalToolTip(entry, result);
+                            results.Add(result);
+                        }
+                    }
+                    return results;
+                }
+            }
+
             var resultList = new List<Result>();
 
-            foreach (var entry in list)
+            foreach (var entry in settingList)
             {
                 // Adjust the score to lower the order of many irrelevant matches from area strings
                 // that may only be for description.

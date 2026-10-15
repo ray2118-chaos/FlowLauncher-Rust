@@ -414,7 +414,9 @@ namespace Flow.Launcher.Plugin.Sys
                         if (result == MessageBoxResult.Yes)
                         {
                             Context.API.SaveAppAllSettings();
-                            if (EnableShutdownPrivilege())
+                            if (Flow.Launcher.Infrastructure.Native.FlowNativeMethods.IsAvailable)
+                                Flow.Launcher.Infrastructure.Native.FlowNativeMethods.ExecuteSystemCommand(Flow.Launcher.Infrastructure.Native.FlowNativeMethods.SYS_ACTION_SHUTDOWN);
+                            else if (EnableShutdownPrivilege())
                                 PInvoke.ExitWindowsEx(EXIT_WINDOWS_FLAGS.EWX_SHUTDOWN | EXIT_WINDOWS_FLAGS.EWX_POWEROFF, REASON);
                             else
                                 Process.Start("shutdown", "/s /t 0");
@@ -439,7 +441,9 @@ namespace Flow.Launcher.Plugin.Sys
                         if (result == MessageBoxResult.Yes)
                         {
                             Context.API.SaveAppAllSettings();
-                            if (EnableShutdownPrivilege())
+                            if (Flow.Launcher.Infrastructure.Native.FlowNativeMethods.IsAvailable)
+                                Flow.Launcher.Infrastructure.Native.FlowNativeMethods.ExecuteSystemCommand(Flow.Launcher.Infrastructure.Native.FlowNativeMethods.SYS_ACTION_RESTART);
+                            else if (EnableShutdownPrivilege())
                                 PInvoke.ExitWindowsEx(EXIT_WINDOWS_FLAGS.EWX_REBOOT, REASON);
                             else
                                 Process.Start("shutdown", "/r /t 0");
@@ -466,7 +470,9 @@ namespace Flow.Launcher.Plugin.Sys
                             // Save settings before advanced restart to avoid data loss
                             Context.API.SaveAppAllSettings();
 
-                            if (EnableShutdownPrivilege())
+                            if (Flow.Launcher.Infrastructure.Native.FlowNativeMethods.IsAvailable)
+                                Flow.Launcher.Infrastructure.Native.FlowNativeMethods.ExecuteSystemCommand(Flow.Launcher.Infrastructure.Native.FlowNativeMethods.SYS_ACTION_RESTART_ADVANCED);
+                            else if (EnableShutdownPrivilege())
                                 PInvoke.ExitWindowsEx(EXIT_WINDOWS_FLAGS.EWX_REBOOT | EXIT_WINDOWS_FLAGS.EWX_BOOTOPTIONS, REASON);
                             else
                                 Process.Start("shutdown", "/r /o /t 0");
@@ -489,7 +495,12 @@ namespace Flow.Launcher.Plugin.Sys
                                 MessageBoxButton.YesNo, MessageBoxImage.Warning);
 
                         if (result == MessageBoxResult.Yes)
-                            PInvoke.ExitWindowsEx(EXIT_WINDOWS_FLAGS.EWX_LOGOFF, REASON);
+                        {
+                            if (Flow.Launcher.Infrastructure.Native.FlowNativeMethods.IsAvailable)
+                                Flow.Launcher.Infrastructure.Native.FlowNativeMethods.ExecuteSystemCommand(Flow.Launcher.Infrastructure.Native.FlowNativeMethods.SYS_ACTION_LOGOFF);
+                            else
+                                PInvoke.ExitWindowsEx(EXIT_WINDOWS_FLAGS.EWX_LOGOFF, REASON);
+                        }
                         return true;
                     }
                 },
@@ -500,7 +511,10 @@ namespace Flow.Launcher.Plugin.Sys
                     IcoPath = "Images\\lock.png",
                     Action = c =>
                     {
-                        PInvoke.LockWorkStation();
+                        if (Flow.Launcher.Infrastructure.Native.FlowNativeMethods.IsAvailable)
+                            Flow.Launcher.Infrastructure.Native.FlowNativeMethods.ExecuteSystemCommand(Flow.Launcher.Infrastructure.Native.FlowNativeMethods.SYS_ACTION_LOCK);
+                        else
+                            PInvoke.LockWorkStation();
                         return true;
                     }
                 },
@@ -511,7 +525,10 @@ namespace Flow.Launcher.Plugin.Sys
                     IcoPath = "Images\\sleep.png",
                     Action = c =>
                     {
-                        PInvoke.SetSuspendState(false, false, false);
+                        if (Flow.Launcher.Infrastructure.Native.FlowNativeMethods.IsAvailable)
+                            Flow.Launcher.Infrastructure.Native.FlowNativeMethods.ExecuteSystemCommand(Flow.Launcher.Infrastructure.Native.FlowNativeMethods.SYS_ACTION_SLEEP);
+                        else
+                            PInvoke.SetSuspendState(false, false, false);
                         return true;
                     }
                 },
@@ -522,7 +539,10 @@ namespace Flow.Launcher.Plugin.Sys
                     IcoPath = "Images\\hibernate.png",
                     Action= c =>
                     {
-                        PInvoke.SetSuspendState(true, false, false);
+                        if (Flow.Launcher.Infrastructure.Native.FlowNativeMethods.IsAvailable)
+                            Flow.Launcher.Infrastructure.Native.FlowNativeMethods.ExecuteSystemCommand(Flow.Launcher.Infrastructure.Native.FlowNativeMethods.SYS_ACTION_HIBERNATE);
+                        else
+                            PInvoke.SetSuspendState(true, false, false);
                         return true;
                     }
                 },
@@ -544,16 +564,23 @@ namespace Flow.Launcher.Plugin.Sys
                     Glyph = new GlyphInfo (FontFamily:"/Resources/#Segoe Fluent Icons", Glyph:"\xea99"),
                     Action = c =>
                     {
-                        // http://www.pinvoke.net/default.aspx/shell32/SHEmptyRecycleBin.html
-                        // FYI, couldn't find documentation for this but if the recycle bin is already empty, it will return -2147418113 (0x8000FFFF (E_UNEXPECTED))
-                        // 0 for nothing
-                        var result = PInvoke.SHEmptyRecycleBin(new(), string.Empty, 0);
-                        if (result != HRESULT.S_OK && result != HRESULT.E_UNEXPECTED)
+                        if (Flow.Launcher.Infrastructure.Native.FlowNativeMethods.IsAvailable)
                         {
-                            Context.API.ShowMsgBox(
-                                Localize.flowlauncher_plugin_sys_dlgtext_empty_recycle_bin_failed(Environment.NewLine),
-                                Localize.flowlauncher_plugin_sys_dlgtitle_error(),
-                                MessageBoxButton.OK, MessageBoxImage.Error);
+                            Flow.Launcher.Infrastructure.Native.FlowNativeMethods.ExecuteSystemCommand(Flow.Launcher.Infrastructure.Native.FlowNativeMethods.SYS_ACTION_EMPTY_RECYCLE_BIN);
+                        }
+                        else
+                        {
+                            // http://www.pinvoke.net/default.aspx/shell32/SHEmptyRecycleBin.html
+                            // FYI, couldn't find documentation for this but if the recycle bin is already empty, it will return -2147418113 (0x8000FFFF (E_UNEXPECTED))
+                            // 0 for nothing
+                            var result = PInvoke.SHEmptyRecycleBin(new(), string.Empty, 0);
+                            if (result != HRESULT.S_OK && result != HRESULT.E_UNEXPECTED)
+                            {
+                                Context.API.ShowMsgBox(
+                                    Localize.flowlauncher_plugin_sys_dlgtext_empty_recycle_bin_failed(Environment.NewLine),
+                                    Localize.flowlauncher_plugin_sys_dlgtitle_error(),
+                                    MessageBoxButton.OK, MessageBoxImage.Error);
+                            }
                         }
                         return true;
                     }

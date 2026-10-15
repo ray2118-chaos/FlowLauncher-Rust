@@ -616,13 +616,21 @@ fn find_currency(token: &str) -> Option<&'static CurrencyMeta> {
 }
 
 fn try_currency_convert(query: &str) -> Option<(String, String, String)> {
-    let lower = query.to_lowercase();
+    let trimmed = query.trim();
+    let clean = if let Some(rest) = trimmed.strip_prefix("convert ") {
+        rest.trim()
+    } else if let Some(rest) = trimmed.strip_prefix("Convert ") {
+        rest.trim()
+    } else {
+        trimmed
+    };
+    let lower = clean.to_lowercase();
     let parts: Vec<&str> = if let Some(idx) = lower.find(" to ") {
-        vec![&query[..idx], &query[idx + 4..]]
+        vec![&clean[..idx], &clean[idx + 4..]]
     } else if let Some(idx) = lower.find(" in ") {
-        vec![&query[..idx], &query[idx + 4..]]
+        vec![&clean[..idx], &clean[idx + 4..]]
     } else if let Some(idx) = lower.find(" as ") {
-        vec![&query[..idx], &query[idx + 4..]]
+        vec![&clean[..idx], &clean[idx + 4..]]
     } else {
         return None;
     };
@@ -752,6 +760,54 @@ static UNITS: &[UnitMeta] = &[
     UnitMeta { name: "ton", plural: "tons", category: UnitCategory::Mass, factor: 1000.0 },
     UnitMeta { name: "tonne", plural: "tonnes", category: UnitCategory::Mass, factor: 1000.0 },
     UnitMeta { name: "tonnes", plural: "tonnes", category: UnitCategory::Mass, factor: 1000.0 },
+    UnitMeta { name: "stick butter", plural: "sticks of butter", category: UnitCategory::Mass, factor: 0.1133980925 },
+    UnitMeta { name: "stick of butter", plural: "sticks of butter", category: UnitCategory::Mass, factor: 0.1133980925 },
+    UnitMeta { name: "sticks butter", plural: "sticks of butter", category: UnitCategory::Mass, factor: 0.1133980925 },
+    UnitMeta { name: "sticks of butter", plural: "sticks of butter", category: UnitCategory::Mass, factor: 0.1133980925 },
+
+    // Kitchen & Volume (base = liter)
+    UnitMeta { name: "l", plural: "liters", category: UnitCategory::Volume, factor: 1.0 },
+    UnitMeta { name: "liter", plural: "liters", category: UnitCategory::Volume, factor: 1.0 },
+    UnitMeta { name: "liters", plural: "liters", category: UnitCategory::Volume, factor: 1.0 },
+    UnitMeta { name: "litre", plural: "litres", category: UnitCategory::Volume, factor: 1.0 },
+    UnitMeta { name: "litres", plural: "litres", category: UnitCategory::Volume, factor: 1.0 },
+    UnitMeta { name: "ml", plural: "milliliters", category: UnitCategory::Volume, factor: 0.001 },
+    UnitMeta { name: "milliliter", plural: "milliliters", category: UnitCategory::Volume, factor: 0.001 },
+    UnitMeta { name: "milliliters", plural: "milliliters", category: UnitCategory::Volume, factor: 0.001 },
+    UnitMeta { name: "cl", plural: "centiliters", category: UnitCategory::Volume, factor: 0.01 },
+    UnitMeta { name: "centiliter", plural: "centiliters", category: UnitCategory::Volume, factor: 0.01 },
+    UnitMeta { name: "centiliters", plural: "centiliters", category: UnitCategory::Volume, factor: 0.01 },
+    UnitMeta { name: "dl", plural: "deciliters", category: UnitCategory::Volume, factor: 0.1 },
+    UnitMeta { name: "deciliter", plural: "deciliters", category: UnitCategory::Volume, factor: 0.1 },
+    UnitMeta { name: "deciliters", plural: "deciliters", category: UnitCategory::Volume, factor: 0.1 },
+    UnitMeta { name: "cup", plural: "cups", category: UnitCategory::Volume, factor: 0.2365882365 },
+    UnitMeta { name: "cups", plural: "cups", category: UnitCategory::Volume, factor: 0.2365882365 },
+    UnitMeta { name: "tbsp", plural: "tablespoons", category: UnitCategory::Volume, factor: 0.0147867648 },
+    UnitMeta { name: "tbs", plural: "tablespoons", category: UnitCategory::Volume, factor: 0.0147867648 },
+    UnitMeta { name: "tablespoon", plural: "tablespoons", category: UnitCategory::Volume, factor: 0.0147867648 },
+    UnitMeta { name: "tablespoons", plural: "tablespoons", category: UnitCategory::Volume, factor: 0.0147867648 },
+    UnitMeta { name: "tsp", plural: "teaspoons", category: UnitCategory::Volume, factor: 0.0049289216 },
+    UnitMeta { name: "teaspoon", plural: "teaspoons", category: UnitCategory::Volume, factor: 0.0049289216 },
+    UnitMeta { name: "teaspoons", plural: "teaspoons", category: UnitCategory::Volume, factor: 0.0049289216 },
+    UnitMeta { name: "fl oz", plural: "fluid ounces", category: UnitCategory::Volume, factor: 0.0295735296 },
+    UnitMeta { name: "floz", plural: "fluid ounces", category: UnitCategory::Volume, factor: 0.0295735296 },
+    UnitMeta { name: "fluid ounce", plural: "fluid ounces", category: UnitCategory::Volume, factor: 0.0295735296 },
+    UnitMeta { name: "fluid ounces", plural: "fluid ounces", category: UnitCategory::Volume, factor: 0.0295735296 },
+    UnitMeta { name: "pt", plural: "pints", category: UnitCategory::Volume, factor: 0.473176473 },
+    UnitMeta { name: "pint", plural: "pints", category: UnitCategory::Volume, factor: 0.473176473 },
+    UnitMeta { name: "pints", plural: "pints", category: UnitCategory::Volume, factor: 0.473176473 },
+    UnitMeta { name: "qt", plural: "quarts", category: UnitCategory::Volume, factor: 0.946352946 },
+    UnitMeta { name: "quart", plural: "quarts", category: UnitCategory::Volume, factor: 0.946352946 },
+    UnitMeta { name: "quarts", plural: "quarts", category: UnitCategory::Volume, factor: 0.946352946 },
+    UnitMeta { name: "gal", plural: "gallons", category: UnitCategory::Volume, factor: 3.785411784 },
+    UnitMeta { name: "gallon", plural: "gallons", category: UnitCategory::Volume, factor: 3.785411784 },
+    UnitMeta { name: "gallons", plural: "gallons", category: UnitCategory::Volume, factor: 3.785411784 },
+    UnitMeta { name: "pinch", plural: "pinches", category: UnitCategory::Volume, factor: 0.000355 },
+    UnitMeta { name: "pinches", plural: "pinches", category: UnitCategory::Volume, factor: 0.000355 },
+    UnitMeta { name: "dash", plural: "dashes", category: UnitCategory::Volume, factor: 0.00071 },
+    UnitMeta { name: "dashes", plural: "dashes", category: UnitCategory::Volume, factor: 0.00071 },
+    UnitMeta { name: "drop", plural: "drops", category: UnitCategory::Volume, factor: 0.00005 },
+    UnitMeta { name: "drops", plural: "drops", category: UnitCategory::Volume, factor: 0.00005 },
 
     // Digital Data (base = bytes)
     UnitMeta { name: "b", plural: "bytes", category: UnitCategory::Digital, factor: 1.0 },
@@ -821,13 +877,21 @@ fn find_unit(token: &str) -> Option<&'static UnitMeta> {
 }
 
 fn try_unit_convert(query: &str) -> Option<(String, String, String)> {
-    let lower = query.to_lowercase();
+    let trimmed = query.trim();
+    let clean = if let Some(rest) = trimmed.strip_prefix("convert ") {
+        rest.trim()
+    } else if let Some(rest) = trimmed.strip_prefix("Convert ") {
+        rest.trim()
+    } else {
+        trimmed
+    };
+    let lower = clean.to_lowercase();
     let parts: Vec<&str> = if let Some(idx) = lower.find(" to ") {
-        vec![&query[..idx], &query[idx + 4..]]
+        vec![&clean[..idx], &clean[idx + 4..]]
     } else if let Some(idx) = lower.find(" in ") {
-        vec![&query[..idx], &query[idx + 4..]]
+        vec![&clean[..idx], &clean[idx + 4..]]
     } else if let Some(idx) = lower.find(" as ") {
-        vec![&query[..idx], &query[idx + 4..]]
+        vec![&clean[..idx], &clean[idx + 4..]]
     } else {
         return None;
     };
@@ -1197,6 +1261,21 @@ mod tests {
 
         let res4 = try_unit_convert("16 gb to mb").unwrap();
         assert!(res4.0.contains("16,384"));
+
+        // Kitchen cooking tests
+        let res5 = try_unit_convert("1 cup to ml").unwrap();
+        assert!(res5.0.contains("milliliters"));
+        assert!(res5.0.contains("236.5"));
+
+        let res6 = try_unit_convert("convert 2 tbsp to tsp").unwrap();
+        assert!(res6.0.contains("teaspoons"));
+        assert!(res6.0.contains("6"));
+
+        let res7 = try_unit_convert("1 stick butter to grams").unwrap();
+        assert!(res7.0.contains("113.3"));
+
+        let res8 = try_unit_convert("convert 350 f in c").unwrap();
+        assert!(res8.0.contains("176.6"));
     }
 
     #[test]

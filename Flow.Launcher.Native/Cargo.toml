@@ -25,3 +25,4 @@ windows-sys = { version = "0.61.2", features = [
     "Win32_UI_WindowsAndMessaging",
 ] }
 xxhash-rust = { version = "0.8.19", features = ["xxh3"] }
+rusqlite = { version = "0.31.0", features = ["bundled"] }

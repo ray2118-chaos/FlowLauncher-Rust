@@ -62,9 +62,8 @@ public partial class SettingsPaneThemeViewModel : BaseModel
     public List<IconPackOption> IconPacks { get; } =
     [
         new("Auto (Match Theme)", "Auto"),
-        new("Monochrome", "Monochrome"),
-        new("Windows 10", "Windows10"),
-        new("Windows 11", "Windows11")
+        new("Default", "Default"),
+        new("Monochrome", "Monochrome")
     ];
 
     public string SelectedIconPack

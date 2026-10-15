@@ -195,21 +195,26 @@ namespace Flow.Launcher.Plugin.Program.Programs
                     // Ctrl + Shift + Enter to run as admin
                     bool runAsAdmin = c.SpecialKeyState.ToModifierKeys() == (ModifierKeys.Control | ModifierKeys.Shift);
 
-                    var info = new ProcessStartInfo
-                    {
-                        FileName = FullPath,
-                        WorkingDirectory = ParentDirectory,
-                        UseShellExecute = true,
-                        Verb = runAsAdmin ? "runas" : "",
-                    };
-
-                    _ = Task.Run(() => Main.StartProcess(Process.Start, info));
+                    _ = Task.Run(() => Launch(runAsAdmin));
 
                     return true;
                 }
             };
 
             return result;
+        }
+
+        public void Launch(bool asAdmin = false)
+        {
+            var info = new ProcessStartInfo
+            {
+                FileName = FullPath,
+                WorkingDirectory = ParentDirectory,
+                UseShellExecute = true,
+                Verb = asAdmin ? "runas" : "",
+            };
+
+            Main.StartProcess(Process.Start, info);
         }
 
 
@@ -533,16 +538,65 @@ namespace Flow.Launcher.Plugin.Program.Programs
 
         private static IEnumerable<Win32> StartMenuPrograms(string[] suffixes, string[] protocols)
         {
+            if (FlowNativeMethods.IsAvailable)
+            {
+                var startDirs = GetStartMenuPaths().Where(Directory.Exists).ToList();
+                if (startDirs.Count > 0)
+                {
+                    var buffer = new NativeIndexedProgram[2048];
+                    int count = FlowNativeMethods.ScanProgramsInDirs(startDirs, suffixes, buffer);
+                    if (count > 0)
+                    {
+                        var startupPaths = GetStartupPaths().ToList();
+                        var programs = new List<Win32>(count);
+
+                        for (int i = 0; i < count; i++)
+                        {
+                            var fullPath = buffer[i].GetFullPath();
+                            if (string.IsNullOrEmpty(fullPath)) continue;
+
+                            if (startupPaths.Any(s => FilesFolders.PathContains(s, fullPath)))
+                                continue;
+
+                            var target = buffer[i].GetTargetPath();
+                            var args = buffer[i].GetArgs();
+                            var desc = buffer[i].GetDescription();
+                            var name = buffer[i].GetName();
+
+                            var prog = new Win32
+                            {
+                                Name = !string.IsNullOrEmpty(name) ? name : Path.GetFileNameWithoutExtension(fullPath),
+                                FullPath = fullPath,
+                                IcoPath = fullPath,
+                                LnkResolvedPath = !string.IsNullOrEmpty(target) ? target : null,
+                                Args = !string.IsNullOrEmpty(args) ? args : null,
+                                Description = desc,
+                                ParentDirectory = Path.GetDirectoryName(fullPath) ?? string.Empty,
+                                ExecutableName = !string.IsNullOrEmpty(target) ? Path.GetFileNameWithoutExtension(target) : Path.GetFileNameWithoutExtension(fullPath),
+                                UniqueIdentifier = fullPath,
+                                Valid = true,
+                                Enabled = true,
+                                LocalizedName = ShellLocalization.GetLocalizedName(fullPath)
+                            };
+
+                            programs.Add(prog);
+                        }
+
+                        return ExceptDisabledSource(programs, x => x.UniqueIdentifier);
+                    }
+                }
+            }
+
             var allPrograms = GetStartMenuPaths()
                 .SelectMany(p => EnumerateProgramsInDir(p, suffixes))
                 .Distinct();
 
-            var startupPaths = GetStartupPaths();
+            var startupPathsFallback = GetStartupPaths();
 
-            var programs = ExceptDisabledSource(allPrograms)
-                .Where(x => !startupPaths.Any(startup => FilesFolders.PathContains(startup, x)))
+            var fallbackPrograms = ExceptDisabledSource(allPrograms)
+                .Where(x => !startupPathsFallback.Any(startup => FilesFolders.PathContains(startup, x)))
                 .Select(x => GetProgramFromPath(x, protocols));
-            return programs;
+            return fallbackPrograms;
         }
 
         private static IEnumerable<Win32> PATHPrograms(string[] suffixes, string[] protocols,

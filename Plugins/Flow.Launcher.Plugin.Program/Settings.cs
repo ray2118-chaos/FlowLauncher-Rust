@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text.Json.Serialization;
@@ -123,6 +123,18 @@ namespace Flow.Launcher.Plugin.Program
         public bool EnableUWP { get; set; } = true;
         public bool HideDuplicatedWindowsApp { get; set; } = false;
 
+        public List<AppCustomShortcut> CustomShortcuts { get; set; } = new List<AppCustomShortcut>();
+
         internal const char SuffixSeparator = ';';
+    }
+
+    public class AppCustomShortcut
+    {
+        public string UniqueIdentifier { get; set; } = string.Empty;
+        public string Name { get; set; } = string.Empty;
+        public string Location { get; set; } = string.Empty;
+        public string Alias { get; set; } = string.Empty;
+        public string Hotkey { get; set; } = string.Empty;
+        public bool Enabled { get; set; } = true;
     }
 }

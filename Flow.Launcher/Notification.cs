@@ -3,6 +3,7 @@ using System.Collections.Concurrent;
 using System.IO;
 using System.Windows;
 using Flow.Launcher.Infrastructure;
+using Flow.Launcher.Core.Plugin;
 using Microsoft.Toolkit.Uwp.Notifications;
 
 namespace Flow.Launcher
@@ -47,6 +48,50 @@ namespace Flow.Launcher
             });
         }
 
+        private static string ResolveIconPath(string iconPath)
+        {
+            if (!string.IsNullOrWhiteSpace(iconPath))
+            {
+                if (Path.IsPathRooted(iconPath) && File.Exists(iconPath))
+                {
+                    return iconPath;
+                }
+
+                // Check relative to ProgramDirectory
+                var programIcon = Path.Combine(Constant.ProgramDirectory, iconPath);
+                if (File.Exists(programIcon))
+                {
+                    return programIcon;
+                }
+
+                // Check if any loaded plugin directory contains this relative path
+                try
+                {
+                    var plugins = PluginManager.GetAllLoadedPlugins();
+                    if (plugins != null)
+                    {
+                        foreach (var plugin in plugins)
+                        {
+                            if (!string.IsNullOrEmpty(plugin.Metadata?.PluginDirectory))
+                            {
+                                var pluginIcon = Path.Combine(plugin.Metadata.PluginDirectory, iconPath);
+                                if (File.Exists(pluginIcon))
+                                {
+                                    return pluginIcon;
+                                }
+                            }
+                        }
+                    }
+                }
+                catch
+                {
+                    // Ignore plugin enumeration errors during early startup
+                }
+            }
+
+            return Path.Combine(Constant.ProgramDirectory, "Images\\app.png");
+        }
+
         private static void ShowInternal(string title, string subTitle, string iconPath = null)
         {
             // Handle notification for win7/8/early win10
@@ -57,14 +102,7 @@ namespace Flow.Launcher
             }
 
             // Using Windows Notification System
-            var Icon = !File.Exists(iconPath)
-                ? Path.Combine(Constant.ProgramDirectory, "Images\\app.png")
-                : iconPath;
-
-            if (!Path.IsPathRooted(Icon))
-            {
-                Icon = Path.GetFullPath(Path.Combine(Constant.ProgramDirectory, Icon));
-            }
+            var Icon = ResolveIconPath(iconPath);
 
             try
             {
@@ -117,19 +155,22 @@ namespace Flow.Launcher
             }
 
             // Using Windows Notification System
-            var Icon = !File.Exists(iconPath)
-                ? Path.Combine(Constant.ProgramDirectory, "Images\\app.png")
-                : iconPath;
+            var Icon = ResolveIconPath(iconPath);
 
             try
             {
                 var guid = Guid.NewGuid().ToString();
-                new ToastContentBuilder()
+                var builder = new ToastContentBuilder()
                     .AddText(title, hintMaxLines: 1)
                     .AddText(subTitle)
-                    .AddButton(buttonText, ToastActivationType.Background, guid)
-                    .AddAppLogoOverride(new Uri(Icon))
-                    .Show();
+                    .AddButton(buttonText, ToastActivationType.Background, guid);
+
+                if (Uri.TryCreate(Icon, UriKind.Absolute, out var uri))
+                {
+                    builder.AddAppLogoOverride(uri);
+                }
+
+                builder.Show();
                 _notificationActions.AddOrUpdate(guid, buttonAction, (key, oldValue) => buttonAction);
             }
             catch (InvalidOperationException e)

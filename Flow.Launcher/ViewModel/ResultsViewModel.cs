@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Collections.Specialized;
 using System.Linq;
@@ -82,6 +82,8 @@ namespace Flow.Launcher.ViewModel
 
         public int SelectedIndex { get; set; }
 
+        public int TopIndex { get; set; }
+
         public ResultViewModel SelectedItem { get; set; }
         public Thickness Margin { get; set; }
         public Visibility Visibility { get; set; } = Visibility.Collapsed;
@@ -158,6 +160,7 @@ namespace Flow.Launcher.ViewModel
 
         public void Clear()
         {
+            TopIndex = 0;
             lock (_collectionLock)
                 Results.RemoveAll();
         }
@@ -202,7 +205,10 @@ namespace Flow.Launcher.ViewModel
                 // update UI in one run, so it can avoid UI flickering
                 Results.Update(newResults, token);
                 if (reselect && Results.Any())
+                {
                     SelectedItem = Results[0];
+                    TopIndex = 0;
+                }
             }
 
             if (token.IsCancellationRequested)
@@ -215,10 +221,12 @@ namespace Flow.Launcher.ViewModel
                         _mainVM.ResultsSelected(this)) // The results are selected
                     {
                         SelectedIndex = 0;
+                        TopIndex = 0;
                         Visibility = Visibility.Visible;
                     }
                     break;
                 case Visibility.Visible when Results.Count == 0:
+                    TopIndex = 0;
                     Visibility = Visibility.Collapsed;
                     break;
             }

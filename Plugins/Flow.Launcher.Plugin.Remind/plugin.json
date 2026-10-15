@@ -3,8 +3,7 @@
   "ActionKeywords": [
     "remind",
     "timer",
-    "water",
-    "*"
+    "water"
   ],
   "Name": "Reminders & Timers",
   "Description": "Natural language reminders, focus timers, and daily hydration tracker",

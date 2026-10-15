@@ -31,6 +31,7 @@ namespace Flow.Launcher.Test.Plugins
             SetStaticProperty("_uwps", new List<UwpApp>());
             SetStaticField("_win32sLock", new SemaphoreSlim(1, 1));
             SetStaticField("_uwpsLock", new SemaphoreSlim(1, 1));
+            ProgramMain.UpdateProgramsSnapshot();
             SetStaticProperty("Context", null);
         }
 
@@ -81,6 +82,67 @@ namespace Flow.Launcher.Test.Plugins
 
             ClassicAssert.AreEqual(1, results.Count);
             ClassicAssert.AreEqual("Visual Studio Code", results[0].Title);
+        }
+
+        [Test]
+        public async Task QueryAsync_BoostsProgramByCustomAliasAsync()
+        {
+            var settings = new ProgramSettings
+            {
+                CustomShortcuts = new List<Flow.Launcher.Plugin.Program.AppCustomShortcut>
+                {
+                    new()
+                    {
+                        Name = "Brave Browser",
+                        UniqueIdentifier = @"C:\Program Files\BraveSoftware\Brave-Browser\Application\brave.exe",
+                        Alias = "br",
+                        Enabled = true
+                    }
+                }
+            };
+
+            SetStaticField("_win32sLock", new SemaphoreSlim(1, 1));
+            SetStaticField("_uwpsLock", new SemaphoreSlim(1, 1));
+            SetStaticProperty("_settings", settings);
+            SetStaticProperty("_win32s", new List<ProgramWin32>
+            {
+                new()
+                {
+                    Name = "Brave Browser",
+                    Description = string.Empty,
+                    FullPath = @"C:\Program Files\BraveSoftware\Brave-Browser\Application\brave.exe",
+                    IcoPath = @"C:\Program Files\BraveSoftware\Brave-Browser\Application\brave.exe",
+                    ParentDirectory = @"C:\Program Files\BraveSoftware\Brave-Browser\Application",
+                    UniqueIdentifier = @"C:\Program Files\BraveSoftware\Brave-Browser\Application\brave.exe",
+                    Valid = true,
+                    Enabled = true
+                }
+            });
+            SetStaticProperty("_uwps", new List<UwpApp>());
+
+            var apiMock = new Mock<IPublicAPI>();
+            apiMock.Setup(x => x.FuzzySearch(It.IsAny<string>(), It.IsAny<string>()))
+                .Returns(new MatchResult(true, SearchPrecisionScore.Regular, new List<int>(), 50));
+
+            SetStaticProperty("Context", new PluginInitContext { API = apiMock.Object });
+            ProgramMain.UpdateProgramsSnapshot();
+            ResetProgramCache();
+
+            var plugin = new ProgramMain();
+            var query = new Query
+            {
+                Search = "br",
+                SearchTerms = ["br"],
+                TrimmedQuery = "br",
+                ActionKeyword = string.Empty
+            };
+
+            var results = await plugin.QueryAsync(query, CancellationToken.None);
+
+            ClassicAssert.AreEqual(1, results.Count);
+            ClassicAssert.AreEqual("Brave Browser", results[0].Title);
+            ClassicAssert.IsTrue(results[0].Score >= 200, "Alias match should be boosted to at least 200");
+            ClassicAssert.IsTrue(results[0].SubTitle.Contains("Alias: br"));
         }
 
         private static Mock<IPublicAPI> CreateApi(CancellationTokenSource cancellation, TaskCompletionSource<bool> searchStarted)

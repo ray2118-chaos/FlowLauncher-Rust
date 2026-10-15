@@ -89,16 +89,18 @@ namespace Flow.Launcher.Infrastructure.Image
 
             if (string.IsNullOrWhiteSpace(pack))
             {
-                return "Windows11";
+                return "Default";
             }
 
             var normalized = pack.Replace(" ", "");
             if (normalized.StartsWith("Monochrome", StringComparison.OrdinalIgnoreCase))
                 return "Monochrome";
-            if (normalized.StartsWith("Windows10", StringComparison.OrdinalIgnoreCase) || normalized.Equals("Win10", StringComparison.OrdinalIgnoreCase))
-                return "Windows10";
-            if (normalized.StartsWith("Windows11", StringComparison.OrdinalIgnoreCase) || normalized.Equals("Win11", StringComparison.OrdinalIgnoreCase))
-                return "Windows11";
+            if (normalized.StartsWith("Default", StringComparison.OrdinalIgnoreCase) ||
+                normalized.StartsWith("Windows11", StringComparison.OrdinalIgnoreCase) ||
+                normalized.Equals("Win11", StringComparison.OrdinalIgnoreCase) ||
+                normalized.StartsWith("Windows10", StringComparison.OrdinalIgnoreCase) ||
+                normalized.Equals("Win10", StringComparison.OrdinalIgnoreCase))
+                return "Default";
 
             return normalized;
         }
@@ -116,7 +118,7 @@ namespace Flow.Launcher.Infrastructure.Image
             }
 
             var pack = GetEffectiveIconPack();
-            if (string.IsNullOrEmpty(pack) || pack.Equals("Default", StringComparison.OrdinalIgnoreCase))
+            if (string.IsNullOrEmpty(pack))
                 return path;
 
             string packDir = Path.Combine(Constant.ProgramDirectory, "Images", "IconPacks", pack);

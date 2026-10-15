@@ -1,8 +1,9 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Net;
 using System.Windows.Controls;
+using Flow.Launcher.Infrastructure.Native;
 using Flow.Launcher.Plugin.SharedCommands;
 
 namespace Flow.Launcher.Plugin.Url
@@ -106,6 +107,14 @@ namespace Flow.Launcher.Plugin.Url
         {
             if (string.IsNullOrWhiteSpace(raw))
                 return false;
+
+            if (FlowNativeMethods.IsAvailable)
+            {
+                if (FlowNativeMethods.ValidateUrl(raw.AsSpan().Trim(), out _))
+                {
+                    return true;
+                }
+            }
 
             var input = raw.Trim();
 

@@ -1,5 +1,6 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
+using Flow.Launcher.Infrastructure.Native;
 using Flow.Launcher.Plugin;
 
 namespace Flow.Launcher.Core.Plugin
@@ -22,39 +23,89 @@ namespace Flow.Launcher.Core.Plugin
                 };
             }
 
-            // replace multiple white spaces with one white space
-            var terms = trimmedQuery.Split(Query.TermSeparator, StringSplitOptions.RemoveEmptyEntries);
-            if (terms.Length == 0)
+            ReadOnlySpan<char> span = trimmedQuery.AsSpan().Trim();
+            if (span.IsEmpty)
             {
                 // nothing was typed
                 return null;
             }
 
-            string actionKeyword, search;
-            string possibleActionKeyword = terms[0];
-            string[] searchTerms;
+            // Find possible action keyword (first space-separated token)
+            int firstSpace = span.IndexOf(' ');
+            string possibleActionKeyword = firstSpace == -1 ? span.ToString() : span.Slice(0, firstSpace).ToString();
 
-            if (nonGlobalPlugins.TryGetValue(possibleActionKeyword, out var pluginPair) && !pluginPair.Metadata.Disabled)
+            string actionKeyword = string.Empty;
+            if (nonGlobalPlugins != null &&
+                nonGlobalPlugins.TryGetValue(possibleActionKeyword, out var pluginPair) &&
+                !pluginPair.Metadata.Disabled)
             {
-                // use non global plugin for query
                 actionKeyword = possibleActionKeyword;
-                search = terms.Length > 1 ? trimmedQuery[(actionKeyword.Length + 1)..].TrimStart() : string.Empty;
-                searchTerms = terms[1..];
+            }
+
+            Span<NativeQueryTerm> termsSpan = stackalloc NativeQueryTerm[64];
+            if (FlowNativeMethods.TokenizeQuery(trimmedQuery.AsSpan(), actionKeyword.AsSpan(), termsSpan, out var parsed))
+            {
+                if (parsed.IsHomeQuery != 0)
+                {
+                    return null;
+                }
+
+                string search = parsed.SearchLength == 0
+                    ? string.Empty
+                    : trimmedQuery.Substring((int)parsed.SearchOffset, (int)parsed.SearchLength);
+
+                string[] searchTerms;
+                if (parsed.TermCount == 0)
+                {
+                    searchTerms = Array.Empty<string>();
+                }
+                else
+                {
+                    searchTerms = new string[parsed.TermCount];
+                    for (int i = 0; i < parsed.TermCount; i++)
+                    {
+                        searchTerms[i] = trimmedQuery.Substring((int)termsSpan[i].Start, (int)termsSpan[i].Length);
+                    }
+                }
+
+                return new Query()
+                {
+                    Search = search,
+                    OriginalQuery = originalQuery,
+                    TrimmedQuery = trimmedQuery,
+                    SearchTerms = searchTerms,
+                    ActionKeyword = actionKeyword,
+                    IsHomeQuery = false
+                };
+            }
+
+            // Fallback in case native parsing returned false
+            var terms = trimmedQuery.Split(Query.TermSeparator, StringSplitOptions.RemoveEmptyEntries);
+            if (terms.Length == 0)
+            {
+                return null;
+            }
+
+            string fallbackSearch;
+            string[] fallbackSearchTerms;
+
+            if (!string.IsNullOrEmpty(actionKeyword))
+            {
+                fallbackSearch = terms.Length > 1 ? trimmedQuery[(actionKeyword.Length + 1)..].TrimStart() : string.Empty;
+                fallbackSearchTerms = terms[1..];
             }
             else
             {
-                // non action keyword
-                actionKeyword = string.Empty;
-                search = trimmedQuery.TrimStart();
-                searchTerms = terms;
+                fallbackSearch = trimmedQuery.TrimStart();
+                fallbackSearchTerms = terms;
             }
 
             return new Query()
             {
-                Search = search,
+                Search = fallbackSearch,
                 OriginalQuery = originalQuery,
                 TrimmedQuery = trimmedQuery,
-                SearchTerms = searchTerms,
+                SearchTerms = fallbackSearchTerms,
                 ActionKeyword = actionKeyword,
                 IsHomeQuery = false
             };

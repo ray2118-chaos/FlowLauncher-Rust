@@ -46,10 +46,10 @@ namespace Flow.Launcher.Plugin.Program
             "uninstall.exe"
         };
 
-        private static volatile IReadOnlyList<IProgram> _allProgramsSnapshot = Array.Empty<IProgram>();
+        internal static volatile IReadOnlyList<IProgram> _allProgramsSnapshot = Array.Empty<IProgram>();
         private static volatile string[] _uwpDirsSnapshot;
 
-        internal static void UpdateProgramsSnapshot()
+        public static void UpdateProgramsSnapshot()
         {
             var win32s = _win32s;
             var uwps = _uwps;
@@ -132,7 +132,7 @@ namespace Flow.Launcher.Plugin.Program
                         }
                         var uwpsDirectories = _uwpDirsSnapshot;
 
-                        return programs
+                        var matched = programs
                             .AsParallel()
                             .WithCancellation(token)
                             .Where(HideUninstallersFilter)
@@ -141,6 +141,50 @@ namespace Flow.Launcher.Plugin.Program
                             .Select(p => p.Result(query.Search, Context.API))
                             .Where(r => string.IsNullOrEmpty(query.Search) || r?.Score > 0)
                             .ToList();
+
+                        if (!string.IsNullOrWhiteSpace(query.Search) && _settings?.CustomShortcuts != null && _settings.CustomShortcuts.Count > 0)
+                        {
+                            var queryTrimmed = query.Search.Trim();
+                            var aliasMatches = _settings.CustomShortcuts
+                                .Where(s => s.Enabled && !string.IsNullOrWhiteSpace(s.Alias))
+                                .Where(s => s.Alias.Equals(queryTrimmed, StringComparison.OrdinalIgnoreCase) ||
+                                            s.Alias.StartsWith(queryTrimmed, StringComparison.OrdinalIgnoreCase))
+                                .ToList();
+
+                            if (aliasMatches.Count > 0)
+                            {
+                                foreach (var s in aliasMatches)
+                                {
+                                    var prog = programs.FirstOrDefault(p => string.Equals(p.UniqueIdentifier, s.UniqueIdentifier, StringComparison.OrdinalIgnoreCase));
+                                    if (prog != null && prog.Enabled)
+                                    {
+                                        bool isExact = s.Alias.Equals(queryTrimmed, StringComparison.OrdinalIgnoreCase);
+                                        var existing = matched.FirstOrDefault(r => string.Equals((r.ContextData as IProgram)?.UniqueIdentifier, s.UniqueIdentifier, StringComparison.OrdinalIgnoreCase));
+                                        if (existing != null)
+                                        {
+                                            existing.Score = isExact ? 250 : 120;
+                                            string prefix = $"★ [Alias: {s.Alias}] ";
+                                            if (!existing.SubTitle.StartsWith(prefix))
+                                                existing.SubTitle = prefix + existing.SubTitle;
+                                        }
+                                        else
+                                        {
+                                            var res = prog.Result(string.Empty, Context.API);
+                                            if (res != null)
+                                            {
+                                                res.Score = isExact ? 250 : 120;
+                                                res.SubTitle = $"★ [Alias: {s.Alias}] " + res.SubTitle;
+                                                matched.Insert(0, res);
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+
+                        matched.Sort((a, b) => b.Score.CompareTo(a.Score));
+
+                        return matched;
                     }, token);
 
                     resultList = resultList.Count != 0 ? resultList : emptyResults;
@@ -303,6 +347,7 @@ namespace Flow.Launcher.Plugin.Program
                 }
 
                 UpdateProgramsSnapshot();
+                AppHotkeyManager.SyncAllHotkeys(_settings, () => _allProgramsSnapshot);
             });
             Context.API.LogInfo(ClassName, $"Number of preload win32 programs <{_win32sCount}>");
             Context.API.LogInfo(ClassName, $"Number of preload uwps <{_uwpsCount}>");
@@ -355,6 +400,7 @@ namespace Flow.Launcher.Plugin.Program
                     _settings.LastIndexTime = DateTime.Now;
                 }
                 UpdateProgramsSnapshot();
+                AppHotkeyManager.SyncAllHotkeys(_settings, () => _allProgramsSnapshot);
             }
             catch (Exception e)
             {
@@ -387,6 +433,7 @@ namespace Flow.Launcher.Plugin.Program
                     _settings.LastIndexTime = DateTime.Now;
                 }
                 UpdateProgramsSnapshot();
+                AppHotkeyManager.SyncAllHotkeys(_settings, () => _allProgramsSnapshot);
             }
             catch (Exception e)
             {
@@ -454,6 +501,54 @@ namespace Flow.Launcher.Plugin.Program
             if (program != null)
             {
                 menuOptions = program.ContextMenus(Context.API);
+
+                var shortcut = _settings.CustomShortcuts?.FirstOrDefault(s => s.UniqueIdentifier == program.UniqueIdentifier);
+                string currentHotkey = shortcut?.Hotkey;
+                string currentAlias = shortcut?.Alias;
+
+                menuOptions.Add(new Result
+                {
+                    Title = string.IsNullOrWhiteSpace(currentHotkey)
+                        ? "Assign Global Hotkey (Win + Key, etc.)"
+                        : $"Edit Global Hotkey ({currentHotkey})",
+                    SubTitle = "Press a key combination anywhere in Windows to instantly launch this app",
+                    Action = _ =>
+                    {
+                        System.Windows.Application.Current?.Dispatcher?.Invoke(() =>
+                        {
+                            var dlg = new AppHotkeyDialog(program, shortcut, _settings);
+                            if (dlg.ShowDialog() == true)
+                            {
+                                ResetCache();
+                            }
+                        });
+                        return true;
+                    },
+                    IcoPath = "Images/app.png",
+                    Glyph = new GlyphInfo(FontFamily: "/Resources/#Segoe Fluent Icons", Glyph: "\xe92e"),
+                });
+
+                menuOptions.Add(new Result
+                {
+                    Title = string.IsNullOrWhiteSpace(currentAlias)
+                        ? "Set Search Alias"
+                        : $"Edit Search Alias ({currentAlias})",
+                    SubTitle = "Type this alias in Flow Launcher to immediately rank this app #1",
+                    Action = _ =>
+                    {
+                        System.Windows.Application.Current?.Dispatcher?.Invoke(() =>
+                        {
+                            var dlg = new AppAliasDialog(program, shortcut, _settings);
+                            if (dlg.ShowDialog() == true)
+                            {
+                                ResetCache();
+                            }
+                        });
+                        return true;
+                    },
+                    IcoPath = "Images/app.png",
+                    Glyph = new GlyphInfo(FontFamily: "/Resources/#Segoe Fluent Icons", Glyph: "\xe71b"),
+                });
             }
 
             menuOptions.Add(
@@ -561,6 +656,7 @@ namespace Flow.Launcher.Plugin.Program
 
         public void Dispose()
         {
+            AppHotkeyManager.Dispose();
             Win32.Dispose();
         }
     }

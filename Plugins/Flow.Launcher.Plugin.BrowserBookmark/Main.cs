@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -72,6 +72,15 @@ public class Main : ISettingProvider, IPlugin, IReloadable, IPluginI18n, IContex
         FilesFolders.ValidateDirectory(_faviconCacheDir);
 
         _cachedBookmarks = BookmarkLoader.LoadAllBookmarks(_settings);
+        if (Flow.Launcher.Infrastructure.Native.FlowNativeMethods.IsAvailable && _cachedBookmarks != null)
+        {
+            Flow.Launcher.Infrastructure.Native.FlowNativeMethods.ClearBookmarksCache();
+            for (uint i = 0; i < (uint)_cachedBookmarks.Count; i++)
+            {
+                var b = _cachedBookmarks[(int)i];
+                Flow.Launcher.Infrastructure.Native.FlowNativeMethods.RegisterBookmark(i, b.Name, b.Url);
+            }
+        }
         _ = MonitorRefreshQueueAsync();
         _initialized = true;
     }
@@ -91,7 +100,41 @@ public class Main : ISettingProvider, IPlugin, IReloadable, IPluginI18n, IContex
 
         if (!topResults)
         {
-            // Since we mixed chrome and firefox bookmarks, we should order them again
+            if (Flow.Launcher.Infrastructure.Native.FlowNativeMethods.IsAvailable)
+            {
+                Span<Flow.Launcher.Infrastructure.Native.NativeBookmarkMatch> matches = stackalloc Flow.Launcher.Infrastructure.Native.NativeBookmarkMatch[100];
+                int matchCount = Flow.Launcher.Infrastructure.Native.FlowNativeMethods.SearchBookmarks(param, matches);
+                if (matchCount > 0)
+                {
+                    var results = new List<Result>(matchCount);
+                    for (int i = 0; i < matchCount; i++)
+                    {
+                        var idx = (int)matches[i].Id;
+                        if (idx >= 0 && idx < _cachedBookmarks.Count)
+                        {
+                            var c = _cachedBookmarks[idx];
+                            results.Add(new Result
+                            {
+                                Title = c.Name,
+                                SubTitle = c.Url,
+                                IcoPath = !string.IsNullOrEmpty(c.FaviconPath) && File.Exists(c.FaviconPath)
+                                    ? c.FaviconPath
+                                    : @"Images\bookmark.png",
+                                Score = matches[i].Score,
+                                Action = _ =>
+                                {
+                                    Context.API.OpenUrl(c.Url);
+                                    return true;
+                                },
+                                ContextData = new BookmarkAttributes { Url = c.Url }
+                            });
+                        }
+                    }
+                    return results;
+                }
+            }
+
+            // Fallback managed search
             return _cachedBookmarks
                 .Select(
                     c => new Result

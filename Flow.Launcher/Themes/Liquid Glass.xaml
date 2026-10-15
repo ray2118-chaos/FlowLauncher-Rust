@@ -14,57 +14,58 @@
 
     <!-- Theme & Icon Pack Settings -->
     <system:Boolean x:Key="ThemeBlurEnabled">True</system:Boolean>
-    <system:String x:Key="ThemeIconPack">Windows11</system:String>
+    <system:String x:Key="ThemeIconPack">Default</system:String>
     <system:String x:Key="SystemBG">Dark</system:String>
-    <Color x:Key="LightBG">#B80C1B2E</Color>
-    <Color x:Key="DarkBG">#A5050C18</Color>
+    <Color x:Key="LightBG">#C5061020</Color>
+    <Color x:Key="DarkBG">#AA030814</Color>
 
     <!-- Layout Metrics -->
     <Thickness x:Key="ResultMargin">0 6 0 8</Thickness>
     <Thickness x:Key="ItemMargin">8 3 8 3</Thickness>
-    <CornerRadius x:Key="ItemRadius">12</CornerRadius>
+    <CornerRadius x:Key="ItemRadius">14</CornerRadius>
     <system:Double x:Key="ResultItemHeight">56</system:Double>
 
-    <!-- Fluid Refractive Caustic Gradients -->
-    <LinearGradientBrush x:Key="LiquidGlassBorderBrush" StartPoint="0,0" EndPoint="1,1">
-        <GradientStop Offset="0.0" Color="#00F2FE" />
-        <GradientStop Offset="0.3" Color="#4FACFE" />
-        <GradientStop Offset="0.65" Color="#0072FF" />
-        <GradientStop Offset="0.85" Color="#7F00FF" />
-        <GradientStop Offset="1.0" Color="#00F2FE" />
+    <!-- Fluid Refractive Caustic Gradients (Electric Aqua -> Deep Ocean Blue -> Royal Indigo) -->
+    <LinearGradientBrush x:Key="LiquidGlass2BorderBrush" StartPoint="0,0" EndPoint="1,1">
+        <GradientStop Offset="0.0" Color="#00E5FF" />
+        <GradientStop Offset="0.32" Color="#0072FF" />
+        <GradientStop Offset="0.68" Color="#6B11FF" />
+        <GradientStop Offset="1.0" Color="#00E5FF" />
     </LinearGradientBrush>
 
-    <LinearGradientBrush x:Key="LiquidCapsuleBorderBrush" StartPoint="0,0" EndPoint="1,0">
-        <GradientStop Offset="0.0" Color="#8000F2FE" />
-        <GradientStop Offset="0.5" Color="#500072FF" />
-        <GradientStop Offset="1.0" Color="#807F00FF" />
-    </LinearGradientBrush>
-
-    <LinearGradientBrush x:Key="LiquidQueryBoxBgBrush" StartPoint="0,0" EndPoint="0,1">
-        <GradientStop Offset="0.0" Color="#3000E5FF" />
-        <GradientStop Offset="0.4" Color="#18040C1A" />
-        <GradientStop Offset="1.0" Color="#25061426" />
-    </LinearGradientBrush>
-
-    <!-- Result Item Interactive Colors (Liquid Shimmer & Deep Translucent Caustic Fill) -->
-    <LinearGradientBrush x:Key="ItemSelectedBorderColor" StartPoint="0,0" EndPoint="1,0">
-        <GradientStop Offset="0.0" Color="#9000F2FE" />
+    <LinearGradientBrush x:Key="LiquidGlass2CapsuleBorderBrush" StartPoint="0,0" EndPoint="1,0">
+        <GradientStop Offset="0.0" Color="#9000E5FF" />
         <GradientStop Offset="0.5" Color="#600072FF" />
-        <GradientStop Offset="1.0" Color="#807F00FF" />
+        <GradientStop Offset="1.0" Color="#806B11FF" />
+    </LinearGradientBrush>
+
+    <LinearGradientBrush x:Key="LiquidGlass2QueryBoxBgBrush" StartPoint="0,0" EndPoint="0,1">
+        <GradientStop Offset="0.0" Color="#3500E5FF" />
+        <GradientStop Offset="0.35" Color="#18030918" />
+        <GradientStop Offset="1.0" Color="#28051228" />
+    </LinearGradientBrush>
+
+
+
+    <!-- Result Item Interactive Colors (Deep Translucent Caustic Fill & Specular Shimmer) -->
+    <LinearGradientBrush x:Key="ItemSelectedBorderColor" StartPoint="0,0" EndPoint="1,0">
+        <GradientStop Offset="0.0" Color="#9900E5FF" />
+        <GradientStop Offset="0.5" Color="#700072FF" />
+        <GradientStop Offset="1.0" Color="#856B11FF" />
     </LinearGradientBrush>
 
     <LinearGradientBrush x:Key="ItemSelectedBackgroundColor" StartPoint="0,0" EndPoint="1,0">
-        <GradientStop Offset="0.0" Color="#3800F2FE" />
-        <GradientStop Offset="0.45" Color="#240066FF" />
-        <GradientStop Offset="1.0" Color="#327F00FF" />
+        <GradientStop Offset="0.0" Color="#3C00E5FF" />
+        <GradientStop Offset="0.45" Color="#260060FF" />
+        <GradientStop Offset="1.0" Color="#346B11FF" />
     </LinearGradientBrush>
 
-    <SolidColorBrush x:Key="ItemHoverBackgroundColor">#1800F2FE</SolidColorBrush>
-    <SolidColorBrush x:Key="ItemHoverBorderColor">#3500F2FE</SolidColorBrush>
+    <SolidColorBrush x:Key="ItemHoverBackgroundColor">#1A00E5FF</SolidColorBrush>
+    <SolidColorBrush x:Key="ItemHoverBorderColor">#3800E5FF</SolidColorBrush>
 
     <!-- Window Styles -->
     <Style x:Key="WindowRadius" TargetType="{x:Type Border}">
-        <Setter Property="CornerRadius" Value="18" />
+        <Setter Property="CornerRadius" Value="20" />
     </Style>
 
     <Style
@@ -72,9 +73,9 @@
         BasedOn="{StaticResource BaseWindowBorderStyle}"
         TargetType="{x:Type Border}">
         <Setter Property="BorderThickness" Value="1.5" />
-        <Setter Property="BorderBrush" Value="{StaticResource LiquidGlassBorderBrush}" />
-        <Setter Property="Background" Value="#A0050C18" />
-        <Setter Property="CornerRadius" Value="18" />
+        <Setter Property="BorderBrush" Value="{StaticResource LiquidGlass2BorderBrush}" />
+        <Setter Property="Background" Value="#A5030814" />
+        <Setter Property="CornerRadius" Value="20" />
         <Setter Property="UseLayoutRounding" Value="True" />
     </Style>
 
@@ -83,15 +84,15 @@
         BasedOn="{StaticResource BaseWindowStyle}"
         TargetType="{x:Type Window}" />
 
-    <!-- Query Box Styles (Floating Liquid Capsule with Specular Caustic Accent) -->
+    <!-- Query Box Styles (Floating Liquid Capsule) -->
     <Style
         x:Key="QueryBoxBgStyle"
         BasedOn="{StaticResource BaseQueryBoxBgStyle}"
         TargetType="{x:Type Border}">
         <Setter Property="Margin" Value="10 8 10 4" />
-        <Setter Property="Background" Value="{StaticResource LiquidQueryBoxBgBrush}" />
+        <Setter Property="Background" Value="{StaticResource LiquidGlass2QueryBoxBgBrush}" />
         <Setter Property="BorderThickness" Value="1.3" />
-        <Setter Property="BorderBrush" Value="{StaticResource LiquidCapsuleBorderBrush}" />
+        <Setter Property="BorderBrush" Value="{StaticResource LiquidGlass2CapsuleBorderBrush}" />
         <Setter Property="CornerRadius" Value="14" />
     </Style>
 
@@ -101,7 +102,7 @@
         TargetType="{x:Type TextBox}">
         <Setter Property="Padding" Value="0 0 52 0" />
         <Setter Property="Foreground" Value="#FFFFFF" />
-        <Setter Property="CaretBrush" Value="#00F2FE" />
+        <Setter Property="CaretBrush" Value="#00E5FF" />
         <Setter Property="FontSize" Value="17" />
         <Setter Property="Height" Value="44" />
         <Setter Property="Background" Value="Transparent" />
@@ -115,10 +116,10 @@
         <Setter Property="Background" Value="Transparent" />
         <Setter Property="Height" Value="44" />
         <Setter Property="FontSize" Value="17" />
-        <Setter Property="Foreground" Value="#50A0D0" />
+        <Setter Property="Foreground" Value="#6000E5FF" />
     </Style>
 
-    <!-- Separators & Pending Line (Glowing Liquid Seam) -->
+    <!-- Separators & Pending Line -->
     <Style
         x:Key="SeparatorStyle"
         BasedOn="{StaticResource BaseSeparatorStyle}"
@@ -126,11 +127,11 @@
         <Setter Property="Fill">
             <Setter.Value>
                 <LinearGradientBrush StartPoint="0,0" EndPoint="1,0">
-                    <GradientStop Offset="0.0" Color="#0000F2FE" />
-                    <GradientStop Offset="0.25" Color="#4000F2FE" />
-                    <GradientStop Offset="0.5" Color="#700072FF" />
-                    <GradientStop Offset="0.75" Color="#407F00FF" />
-                    <GradientStop Offset="1.0" Color="#007F00FF" />
+                    <GradientStop Offset="0.0" Color="#0000E5FF" />
+                    <GradientStop Offset="0.25" Color="#5000E5FF" />
+                    <GradientStop Offset="0.5" Color="#800072FF" />
+                    <GradientStop Offset="0.75" Color="#506B11FF" />
+                    <GradientStop Offset="1.0" Color="#006B11FF" />
                 </LinearGradientBrush>
             </Setter.Value>
         </Setter>
@@ -145,20 +146,20 @@
         <Setter Property="Stroke">
             <Setter.Value>
                 <LinearGradientBrush StartPoint="0,0" EndPoint="1,0">
-                    <GradientStop Offset="0.0" Color="#00F2FE" />
+                    <GradientStop Offset="0.0" Color="#00E5FF" />
                     <GradientStop Offset="0.5" Color="#0072FF" />
-                    <GradientStop Offset="1.0" Color="#7F00FF" />
+                    <GradientStop Offset="1.0" Color="#6B11FF" />
                 </LinearGradientBrush>
             </Setter.Value>
         </Setter>
     </Style>
 
-    <!-- Result Item Typography (Crisp Luminous Contrast) -->
+    <!-- Result Item Typography -->
     <Style
         x:Key="ItemTitleStyle"
         BasedOn="{StaticResource BaseItemTitleStyle}"
         TargetType="{x:Type TextBlock}">
-        <Setter Property="Foreground" Value="#F0F6FC" />
+        <Setter Property="Foreground" Value="#F2F8FF" />
         <Setter Property="FontSize" Value="15" />
         <Setter Property="FontWeight" Value="SemiBold" />
     </Style>
@@ -167,7 +168,7 @@
         x:Key="ItemSubTitleStyle"
         BasedOn="{StaticResource BaseItemSubTitleStyle}"
         TargetType="{x:Type TextBlock}">
-        <Setter Property="Foreground" Value="#80A4C4" />
+        <Setter Property="Foreground" Value="#82A6C8" />
         <Setter Property="FontSize" Value="12" />
     </Style>
 
@@ -184,16 +185,16 @@
         x:Key="ItemSubTitleSelectedStyle"
         BasedOn="{StaticResource BaseItemSubTitleSelectedStyle}"
         TargetType="{x:Type TextBlock}">
-        <Setter Property="Foreground" Value="#90E0EF" />
+        <Setter Property="Foreground" Value="#A5F0FF" />
         <Setter Property="FontSize" Value="12" />
     </Style>
 
     <Style x:Key="HighlightStyle">
         <Setter Property="Inline.FontWeight" Value="ExtraBold" />
-        <Setter Property="Inline.Foreground" Value="#00F2FE" />
+        <Setter Property="Inline.Foreground" Value="#00E5FF" />
     </Style>
 
-    <!-- Selection Capsule Indicator (Glowing Cyan Fluid Notch) -->
+    <!-- Selection Capsule Indicator -->
     <Style
         x:Key="BulletStyle"
         BasedOn="{StaticResource BaseBulletStyle}"
@@ -213,21 +214,21 @@
         <Setter Property="Background">
             <Setter.Value>
                 <LinearGradientBrush StartPoint="0,0" EndPoint="0,1">
-                    <GradientStop Offset="0.0" Color="#00F2FE" />
+                    <GradientStop Offset="0.0" Color="#00E5FF" />
                     <GradientStop Offset="1.0" Color="#0072FF" />
                 </LinearGradientBrush>
             </Setter.Value>
         </Setter>
     </Style>
 
-    <!-- Hotkey Badges (Liquid Glass Capsules: [Alt 1]) -->
+    <!-- Hotkey Badges -->
     <Style
         x:Key="ItemHotkeyStyle"
         BasedOn="{StaticResource BaseItemHotkeyStyle}"
         TargetType="{x:Type TextBlock}">
         <Setter Property="FontSize" Value="11" />
         <Setter Property="FontWeight" Value="SemiBold" />
-        <Setter Property="Foreground" Value="#70A8D0" />
+        <Setter Property="Foreground" Value="#78B0D8" />
     </Style>
 
     <Style
@@ -245,10 +246,10 @@
         TargetType="{x:Type Border}">
         <Setter Property="Margin" Value="6 0 10 0" />
         <Setter Property="Padding" Value="7 3 7 3" />
-        <Setter Property="Background" Value="#1200F2FE" />
-        <Setter Property="BorderBrush" Value="#2500F2FE" />
+        <Setter Property="Background" Value="#1500E5FF" />
+        <Setter Property="BorderBrush" Value="#3000E5FF" />
         <Setter Property="BorderThickness" Value="1" />
-        <Setter Property="CornerRadius" Value="5" />
+        <Setter Property="CornerRadius" Value="8" />
     </Style>
 
     <Style
@@ -257,49 +258,46 @@
         TargetType="{x:Type Border}">
         <Setter Property="Margin" Value="6 0 10 0" />
         <Setter Property="Padding" Value="7 3 7 3" />
-        <Setter Property="CornerRadius" Value="5" />
-        <Setter Property="BorderBrush" Value="#6000F2FE" />
+        <Setter Property="Background" Value="#3500E5FF" />
+        <Setter Property="BorderBrush" Value="#7000E5FF" />
         <Setter Property="BorderThickness" Value="1" />
-        <Setter Property="Background" Value="#300072FF" />
+        <Setter Property="CornerRadius" Value="8" />
     </Style>
 
-    <!-- Glyphs & Icons -->
+
+
+    <!-- Clock Styles -->
+    <Style
+        x:Key="ClockPanel"
+        BasedOn="{StaticResource BaseClockPanel}"
+        TargetType="{x:Type StackPanel}">
+        <Setter Property="Margin" Value="0 0 72 0" />
+        <Setter Property="VerticalAlignment" Value="Center" />
+    </Style>
+
+    <Style
+        x:Key="ClockBox"
+        BasedOn="{StaticResource BaseClockBox}"
+        TargetType="{x:Type TextBlock}">
+        <Setter Property="Foreground" Value="#E0F8FF" />
+        <Setter Property="FontSize" Value="14" />
+        <Setter Property="FontWeight" Value="SemiBold" />
+    </Style>
+
+    <Style
+        x:Key="DateBox"
+        BasedOn="{StaticResource BaseDateBox}"
+        TargetType="{x:Type TextBlock}">
+        <Setter Property="Foreground" Value="#78B0D8" />
+        <Setter Property="FontSize" Value="10" />
+    </Style>
+
+    <!-- Glyph Styling -->
     <Style
         x:Key="ItemGlyph"
         BasedOn="{StaticResource BaseGlyphStyle}"
         TargetType="{x:Type TextBlock}">
-        <Setter Property="Foreground" Value="#90B8D8" />
-    </Style>
-
-    <Style
-        x:Key="ItemGlyphSelectedStyle"
-        BasedOn="{StaticResource BaseGlyphSelectedStyle}"
-        TargetType="{x:Type TextBlock}">
-        <Setter Property="Foreground" Value="#00F2FE" />
-    </Style>
-
-    <!-- Preview Area Styles -->
-    <Style
-        x:Key="PreviewBorderStyle"
-        BasedOn="{StaticResource BasePreviewBorderStyle}"
-        TargetType="{x:Type Border}">
-        <Setter Property="BorderBrush" Value="#3000F2FE" />
-    </Style>
-
-    <Style
-        x:Key="PreviewItemTitleStyle"
-        BasedOn="{StaticResource BasePreviewItemTitleStyle}"
-        TargetType="{x:Type TextBlock}">
-        <Setter Property="Foreground" Value="#FFFFFF" />
-        <Setter Property="FontSize" Value="15" />
-        <Setter Property="FontWeight" Value="Bold" />
-    </Style>
-
-    <Style
-        x:Key="PreviewItemSubTitleStyle"
-        BasedOn="{StaticResource BasePreviewItemSubTitleStyle}"
-        TargetType="{x:Type TextBlock}">
-        <Setter Property="Foreground" Value="#90B8D8" />
+        <Setter Property="Foreground" Value="#00E5FF" />
     </Style>
 
     <!-- ScrollBar Styles -->
@@ -311,9 +309,9 @@
             <Setter.Value>
                 <ControlTemplate TargetType="{x:Type Thumb}">
                     <Border
-                        Background="#3500F2FE"
+                        Background="#5000E5FF"
                         BorderBrush="Transparent"
-                        CornerRadius="3"
+                        CornerRadius="2"
                         DockPanel.Dock="Right" />
                 </ControlTemplate>
             </Setter.Value>
@@ -324,7 +322,7 @@
         x:Key="ScrollBarStyle"
         BasedOn="{StaticResource BaseScrollBarStyle}"
         TargetType="{x:Type ScrollBar}">
-        <Setter Property="Width" Value="5" />
+        <Setter Property="Width" Value="4" />
     </Style>
 
 </ResourceDictionary>

@@ -7,6 +7,17 @@ using Flow.Launcher.Infrastructure.Native;
 
 namespace Flow.Launcher.Plugin.ProcessKiller
 {
+    internal class ProcessEntry
+    {
+        public uint Pid { get; init; }
+        public string Name { get; init; } = string.Empty;
+        public string ExePath { get; init; } = string.Empty;
+        public string WindowTitle { get; init; } = string.Empty;
+        public uint MemoryMb { get; init; }
+
+        public string GetProcessNameIdTitle() => $"{Name} - {Pid}";
+    }
+
     internal class ProcessHelper
     {
         private static readonly string ClassName = nameof(ProcessHelper);
@@ -36,110 +47,66 @@ namespace Flow.Launcher.Plugin.ProcessKiller
             string.Equals(p.ProcessName, FlowLauncherProcessName, StringComparison.OrdinalIgnoreCase);
 
         /// <summary>
-        /// Get title based on process name and id
+        /// Returns all running non-system processes via native ToolHelp snapshot with zero GC overhead
         /// </summary>
-        public static string GetProcessNameIdTitle(Process p)
-        {
-            var sb = new StringBuilder();
-            sb.Append(p.ProcessName);
-            sb.Append(" - ");
-            sb.Append(p.Id);
-            return sb.ToString();
-        }
-
-        /// <summary>
-        /// Returns a Process for every running non-system process via native ToolHelp snapshot
-        /// </summary>
-        public List<Process> GetMatchingProcesses()
+        public List<ProcessEntry> GetMatchingProcesses()
         {
             if (FlowNativeMethods.IsAvailable)
             {
                 var items = new NativeProcessItem[1024];
-                int count = FlowNativeMethods.GetProcesses(items);
+                int count = FlowNativeMethods.GetProcesses(items, filterSystem: true);
                 if (count > 0)
                 {
-                    var processlist = new List<Process>(count);
+                    var processlist = new List<ProcessEntry>(count);
                     for (int i = 0; i < count; i++)
                     {
                         var name = items[i].GetName();
                         if (string.IsNullOrEmpty(name)) continue;
-                        
-                        var cleanName = name.EndsWith(".exe", StringComparison.OrdinalIgnoreCase) 
-                            ? name[..^4] 
+
+                        var cleanName = name.EndsWith(".exe", StringComparison.OrdinalIgnoreCase)
+                            ? name[..^4]
                             : name;
 
-                        if (_systemProcessList.Contains(cleanName.ToLower()) ||
-                            string.Equals(cleanName, FlowLauncherProcessName, StringComparison.OrdinalIgnoreCase))
+                        processlist.Add(new ProcessEntry
                         {
-                            continue;
-                        }
-
-                        try
-                        {
-                            processlist.Add(Process.GetProcessById((int)items[i].Pid));
-                        }
-                        catch
-                        {
-                            // Process may have exited
-                        }
+                            Pid = items[i].Pid,
+                            Name = cleanName,
+                            ExePath = items[i].GetExePath(),
+                            WindowTitle = items[i].GetWindowTitle(),
+                            MemoryMb = items[i].MemWorkingSetMb
+                        });
                     }
                     return processlist;
                 }
             }
 
-            var fallbackList = new List<Process>();
+            // Fallback for non-native environments
+            var fallbackList = new List<ProcessEntry>();
             foreach (var p in Process.GetProcesses())
             {
                 if (IsSystemProcessOrFlowLauncher(p)) continue;
-                fallbackList.Add(p);
+                fallbackList.Add(new ProcessEntry
+                {
+                    Pid = (uint)p.Id,
+                    Name = p.ProcessName,
+                    ExePath = TryGetProcessFilename(p),
+                    WindowTitle = p.MainWindowTitle,
+                    MemoryMb = 0
+                });
             }
             return fallbackList;
         }
 
-        /// <summary>
-        /// Returns a dictionary of process IDs and their window titles via native ToolHelp/EnumWindows snapshot
-        /// </summary>
-        public static Dictionary<int, string> GetProcessesWithNonEmptyWindowTitle()
-        {
-            if (FlowNativeMethods.IsAvailable)
-            {
-                var items = new NativeProcessItem[1024];
-                int count = FlowNativeMethods.GetProcesses(items);
-                if (count > 0)
-                {
-                    var dict = new Dictionary<int, string>(count);
-                    for (int i = 0; i < count; i++)
-                    {
-                        var title = items[i].GetWindowTitle();
-                        if (!string.IsNullOrWhiteSpace(title))
-                        {
-                            dict[(int)items[i].Pid] = title;
-                        }
-                    }
-                    return dict;
-                }
-            }
-
-            return [];
-        }
-
-        /// <summary>
-        /// Returns all non-system processes whose file path matches the given processPath
-        /// </summary>
-        public IEnumerable<Process> GetSimilarProcesses(string processPath)
-        {
-            return GetMatchingProcesses().Where(p => TryGetProcessFilename(p) == processPath);
-        }
-
-        public static void TryKill(Process p)
+        public static void TryKill(uint pid, string procName)
         {
             try
             {
-                if (FlowNativeMethods.IsAvailable && FlowNativeMethods.KillProcess((uint)p.Id))
+                if (FlowNativeMethods.IsAvailable && FlowNativeMethods.KillProcess(pid))
                 {
                     return;
                 }
 
+                using var p = Process.GetProcessById((int)pid);
                 if (!p.HasExited)
                 {
                     p.Kill();
@@ -148,7 +115,7 @@ namespace Flow.Launcher.Plugin.ProcessKiller
             }
             catch (Exception e)
             {
-                Main.Context.API.LogException(ClassName, $"Failed to kill process {p.ProcessName}", e);
+                Main.Context.API.LogException(ClassName, $"Failed to kill process {procName} ({pid})", e);
             }
         }
 

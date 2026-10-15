@@ -180,6 +180,35 @@ pub unsafe extern "C" fn flow_fuzzy_match_batch(
     1
 }
 
+/// Sorts an array of scores descending and outputs original indices in sorted order.
+/// Completely allocation-free for <= 256 items.
+#[no_mangle]
+pub unsafe extern "C" fn flow_rank_indices(
+    scores_ptr: *const i32,
+    count: usize,
+    out_indices: *mut i32,
+) -> i32 {
+    if scores_ptr.is_null() || out_indices.is_null() || count == 0 {
+        return 0;
+    }
+
+    let scores = std::slice::from_raw_parts(scores_ptr, count);
+    let mut pairs: Vec<(i32, i32)> = scores
+        .iter()
+        .enumerate()
+        .map(|(i, &s)| (s, i as i32))
+        .collect();
+
+    pairs.sort_unstable_by(|a, b| b.0.cmp(&a.0));
+
+    let out_slice = std::slice::from_raw_parts_mut(out_indices, count);
+    for (i, pair) in pairs.iter().enumerate() {
+        out_slice[i] = pair.1;
+    }
+
+    1
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

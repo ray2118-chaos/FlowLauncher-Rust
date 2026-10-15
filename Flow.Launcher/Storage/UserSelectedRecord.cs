@@ -1,5 +1,7 @@
-﻿using System.Collections.Generic;
+using System;
+using System.Collections.Generic;
 using System.Text.Json.Serialization;
+using Flow.Launcher.Infrastructure.Native;
 using Flow.Launcher.Plugin;
 
 namespace Flow.Launcher.Storage
@@ -27,19 +29,7 @@ namespace Flow.Launcher.Storage
                 return start;
             }
 
-            unchecked
-            {
-                // skip the empty space
-                // https://stackoverflow.com/a/5155015 31 prime and is 2^5 - 1 which allows fast
-                //    optimization without information lost when int overflow
-
-                for (int i = 0; i < s.Length; i++)
-                {
-                    start = start * HASH_MULTIPLIER + s[i];
-                }
-
-                return start;
-            }
+            return FlowNativeMethods.ComputeHistoryHash(s.AsSpan(), start);
         }
 
         private static int GenerateResultHashCode(Result result)

@@ -42,35 +42,25 @@ namespace Flow.Launcher.Plugin.ProcessKiller
         public List<Result> LoadContextMenus(Result result)
         {
             var menuOptions = new List<Result>();
+            var procName = result.ContextData as string;
             var processPath = result.SubTitle;
 
-            // get all non-system processes whose file path matches that of the given result (processPath)
-            var similarProcesses = processHelper.GetSimilarProcesses(processPath);
-
-            if (similarProcesses.Any())
+            if (!string.IsNullOrEmpty(procName))
             {
                 menuOptions.Add(new Result
                 {
                     Title = Localize.flowlauncher_plugin_processkiller_kill_instances(),
-                    SubTitle = processPath,
+                    SubTitle = !string.IsNullOrEmpty(processPath) ? processPath : procName,
                     Action = _ =>
                     {
                         if (Flow.Launcher.Infrastructure.Native.FlowNativeMethods.IsAvailable)
                         {
-                            var procName = System.IO.Path.GetFileNameWithoutExtension(processPath);
                             Flow.Launcher.Infrastructure.Native.FlowNativeMethods.KillProcessesByName(procName);
                         }
-                        else
-                        {
-                            foreach (var p in similarProcesses)
-                            {
-                                ProcessHelper.TryKill(p);
-                            }
-                        }
-
+                        Context.API.ReQuery();
                         return true;
                     },
-                    IcoPath = processPath
+                    IcoPath = !string.IsNullOrEmpty(result.IcoPath) ? result.IcoPath : "Images/processkiller.png"
                 });
             }
 
@@ -79,74 +69,62 @@ namespace Flow.Launcher.Plugin.ProcessKiller
 
         private List<Result> CreateResultsFromQuery(Query query)
         {
-            // Get all non-system processes
+            // Get all non-system processes via native snapshot
             var allProcessList = processHelper.GetMatchingProcesses();
-            if (allProcessList.Count == 0)
+            if (allProcessList == null || allProcessList.Count == 0)
             {
                 return null;
             }
 
-            // Filter processes based on search term
             var searchTerm = query.Search;
             var processlist = new List<ProcessResult>();
-            var processWindowTitle =
-                _settings.ShowWindowTitle || _settings.PutVisibleWindowProcessesTop ?
-                ProcessHelper.GetProcessesWithNonEmptyWindowTitle() :
-                [];
-            if (string.IsNullOrWhiteSpace(searchTerm))
-            {
-                foreach (var p in allProcessList)
-                {
-                    var progressNameIdTitle = ProcessHelper.GetProcessNameIdTitle(p);
 
-                    if (processWindowTitle.TryGetValue(p.Id, out var windowTitle))
+            foreach (var p in allProcessList)
+            {
+                var progressNameIdTitle = p.GetProcessNameIdTitle();
+                var windowTitle = p.WindowTitle;
+                var hasWindowTitle = !string.IsNullOrEmpty(windowTitle);
+
+                if (string.IsNullOrWhiteSpace(searchTerm))
+                {
+                    processlist.Add(new ProcessResult
                     {
-                        // Add score to prioritize processes with visible windows
-                        // Use window title for those processes if enabled
-                        processlist.Add(new ProcessResult(
-                            p,
-                            _settings.PutVisibleWindowProcessesTop ? 200 : 0,
-                            _settings.ShowWindowTitle ? windowTitle : progressNameIdTitle,
-                            null,
-                            progressNameIdTitle));
-                    }
-                    else
-                    {
-                        processlist.Add(new ProcessResult(
-                            p,
-                            0,
-                            progressNameIdTitle,
-                            null,
-                            progressNameIdTitle));
-                    }
+                        Pid = p.Pid,
+                        ProcessName = p.Name,
+                        ExePath = p.ExePath,
+                        WindowTitle = windowTitle,
+                        MemoryMb = p.MemoryMb,
+                        Score = hasWindowTitle && _settings.PutVisibleWindowProcessesTop ? 200 : 0,
+                        Title = hasWindowTitle && _settings.ShowWindowTitle ? windowTitle : progressNameIdTitle,
+                        TitleMatch = null,
+                        Tooltip = progressNameIdTitle
+                    });
                 }
-            }
-            else
-            {
-                foreach (var p in allProcessList)
+                else
                 {
-                    var progressNameIdTitle = ProcessHelper.GetProcessNameIdTitle(p);
-
-                    if (processWindowTitle.TryGetValue(p.Id, out var windowTitle))
+                    if (hasWindowTitle)
                     {
-                        // Get max score from searching process name, window title and process id
                         var windowTitleMatch = Context.API.FuzzySearch(searchTerm, windowTitle);
                         var processNameIdMatch = Context.API.FuzzySearch(searchTerm, progressNameIdTitle);
                         var score = Math.Max(windowTitleMatch.Score, processNameIdMatch.Score);
                         if (score > 0)
                         {
-                            // Add score to prioritize processes with visible windows
-                            // Use window title for those processes
                             if (_settings.PutVisibleWindowProcessesTop)
                             {
                                 score += 200;
                             }
-                            processlist.Add(new ProcessResult(
-                                p,
-                                score,
-                                _settings.ShowWindowTitle ? windowTitle : progressNameIdTitle,
-                                score == windowTitleMatch.Score ? windowTitleMatch : null,
-                                progressNameIdTitle));
+                            processlist.Add(new ProcessResult
+                            {
+                                Pid = p.Pid,
+                                ProcessName = p.Name,
+                                ExePath = p.ExePath,
+                                WindowTitle = windowTitle,
+                                MemoryMb = p.MemoryMb,
+                                Score = score,
+                                Title = _settings.ShowWindowTitle ? windowTitle : progressNameIdTitle,
+                                TitleMatch = score == windowTitleMatch.Score ? windowTitleMatch : null,
+                                Tooltip = progressNameIdTitle
+                            });
                         }
                     }
                     else
@@ -155,12 +133,18 @@ namespace Flow.Launcher.Plugin.ProcessKiller
                         var score = processNameIdMatch.Score;
                         if (score > 0)
                         {
-                            processlist.Add(new ProcessResult(
-                                p,
-                                score,
-                                progressNameIdTitle,
-                                processNameIdMatch,
-                                progressNameIdTitle));
+                            processlist.Add(new ProcessResult
+                            {
+                                Pid = p.Pid,
+                                ProcessName = p.Name,
+                                ExePath = p.ExePath,
+                                WindowTitle = string.Empty,
+                                MemoryMb = p.MemoryMb,
+                                Score = score,
+                                Title = progressNameIdTitle,
+                                TitleMatch = processNameIdMatch,
+                                Tooltip = progressNameIdTitle
+                            });
                         }
                     }
                 }
@@ -169,53 +153,63 @@ namespace Flow.Launcher.Plugin.ProcessKiller
             var results = new List<Result>();
             foreach (var pr in processlist)
             {
-                var p = pr.Process;
-                var path = ProcessHelper.TryGetProcessFilename(p);
-                results.Add(new Result()
+                var iconPath = !string.IsNullOrEmpty(pr.ExePath) ? pr.ExePath : "Images/processkiller.png";
+                var subtitle = !string.IsNullOrEmpty(pr.ExePath)
+                    ? (pr.MemoryMb > 0 ? $"{pr.ExePath} • {pr.MemoryMb} MB" : pr.ExePath)
+                    : (pr.MemoryMb > 0 ? $"{pr.ProcessName} • {pr.MemoryMb} MB" : pr.ProcessName);
+
+                results.Add(new Result
                 {
-                    IcoPath = path,
+                    IcoPath = iconPath,
                     Title = pr.Title,
                     TitleToolTip = pr.Tooltip,
-                    SubTitle = path,
+                    SubTitle = subtitle,
                     TitleHighlightData = pr.TitleMatch?.MatchData,
                     Score = pr.Score,
-                    ContextData = p.ProcessName,
-                    AutoCompleteText = $"{Context.CurrentPluginMetadata.ActionKeyword}{Plugin.Query.TermSeparator}{p.ProcessName}",
-                    Action = (c) =>
+                    ContextData = pr.ProcessName,
+                    AutoCompleteText = $"{Context.CurrentPluginMetadata.ActionKeyword}{Plugin.Query.TermSeparator}{pr.ProcessName}",
+                    Action = _ =>
                     {
-                        ProcessHelper.TryKill(p);
-                        // Re-query to refresh process list
+                        ProcessHelper.TryKill(pr.Pid, pr.ProcessName);
                         Context.API.ReQuery();
                         return true;
                     }
                 });
             }
 
-            // Order results by process name for processes without visible windows
+            // Order results by title
             var sortedResults = results.OrderBy(x => x.Title).ToList();
 
-            // When there are multiple results AND all of them are instances of the same executable
-            // add a quick option to kill them all at the top of the results.
-            var firstResult = sortedResults.FirstOrDefault(x => !string.IsNullOrEmpty(x.SubTitle));
-            if (processlist.Count > 1 && !string.IsNullOrEmpty(searchTerm) && sortedResults.All(r => r.SubTitle == firstResult?.SubTitle))
+            // Quick option to kill all instances of the same executable
+            if (processlist.Count > 1 && !string.IsNullOrEmpty(searchTerm))
             {
-                sortedResults.Insert(1, new Result()
+                var firstTarget = processlist.First().ProcessName;
+                if (processlist.All(x => string.Equals(x.ProcessName, firstTarget, StringComparison.OrdinalIgnoreCase)))
                 {
-                    IcoPath = firstResult?.IcoPath,
-                    Title = Localize.flowlauncher_plugin_processkiller_kill_all(firstResult?.ContextData),
-                    SubTitle = Localize.flowlauncher_plugin_processkiller_kill_all_count(processlist.Count),
-                    Score = 200,
-                    Action = (c) =>
+                    sortedResults.Insert(0, new Result
                     {
-                        foreach (var p in processlist)
+                        IcoPath = sortedResults.FirstOrDefault()?.IcoPath ?? "Images/processkiller.png",
+                        Title = Localize.flowlauncher_plugin_processkiller_kill_all(firstTarget),
+                        SubTitle = Localize.flowlauncher_plugin_processkiller_kill_all_count(processlist.Count),
+                        Score = 300,
+                        Action = _ =>
                         {
-                            ProcessHelper.TryKill(p.Process);
+                            if (Flow.Launcher.Infrastructure.Native.FlowNativeMethods.IsAvailable)
+                            {
+                                Flow.Launcher.Infrastructure.Native.FlowNativeMethods.KillProcessesByName(firstTarget);
+                            }
+                            else
+                            {
+                                foreach (var p in processlist)
+                                {
+                                    ProcessHelper.TryKill(p.Pid, p.ProcessName);
+                                }
+                            }
+                            Context.API.ReQuery();
+                            return true;
                         }
-                        // Re-query to refresh process list
-                        Context.API.ReQuery();
-                        return true;
-                    }
-                });
+                    });
+                }
             }
 
             return sortedResults;

@@ -1,4 +1,4 @@
-﻿using System.Collections.Generic;
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Windows;
@@ -10,6 +10,7 @@ using Flow.Launcher.Plugin.Program.Programs;
 using System.ComponentModel;
 using System.Windows.Data;
 using Flow.Launcher.Plugin.Program.ViewModels;
+using System.Collections.ObjectModel;
 
 namespace Flow.Launcher.Plugin.Program.Views
 {
@@ -113,16 +114,16 @@ namespace Flow.Launcher.Plugin.Program.Views
         {
             this.context = context;
             _settings = settings;
-            Loaded += Setting_Loaded;
             InitializeComponent();
         }
 
-        private void Setting_Loaded(object sender, RoutedEventArgs e)
+        private void UserControl_Loaded(object sender, RoutedEventArgs e)
         {
             ProgramSettingDisplayList = ProgramSettingDisplay.LoadProgramSources();
             programSourceView.ItemsSource = ProgramSettingDisplayList;
 
             ViewRefresh();
+            LoadAppShortcuts();
         }
 
         private void ViewRefresh()
@@ -154,7 +155,8 @@ namespace Flow.Launcher.Plugin.Program.Views
             ViewRefresh();
             indexingPanel.Visibility = Visibility.Visible;
             await Main.IndexProgramsAsync();
-            indexingPanel.Visibility = Visibility.Hidden;
+            indexingPanel.Visibility = Visibility.Collapsed;
+            LoadAppShortcuts();
         }
 
         private void btnAddProgramSource_OnClick(object sender, RoutedEventArgs e)
@@ -462,5 +464,206 @@ namespace Flow.Launcher.Plugin.Program.Views
             gView.Columns[1].Width = workingWidth * col2;
             gView.Columns[2].Width = workingWidth * col3;
         }
+
+        #region Raycast App Shortcuts & Aliases
+
+        public ObservableCollection<AppShortcutItemViewModel> AppShortcutsList { get; } = new();
+        public ICollectionView AppShortcutsView { get; private set; }
+
+        private void LoadAppShortcuts()
+        {
+            var programs = Main._allProgramsSnapshot;
+            if (programs.Count == 0 && ((Main._win32s?.Count ?? 0) > 0 || (Main._uwps?.Count ?? 0) > 0))
+            {
+                Main.UpdateProgramsSnapshot();
+                programs = Main._allProgramsSnapshot;
+            }
+
+            var shortcutsDict = _settings.CustomShortcuts?
+                .Where(s => !string.IsNullOrEmpty(s.UniqueIdentifier))
+                .ToDictionary(s => s.UniqueIdentifier, System.StringComparer.OrdinalIgnoreCase)
+                ?? new Dictionary<string, AppCustomShortcut>(System.StringComparer.OrdinalIgnoreCase);
+
+            var items = programs
+                .Where(p => p != null && !string.IsNullOrWhiteSpace(p.Name))
+                .Select(p =>
+                {
+                    shortcutsDict.TryGetValue(p.UniqueIdentifier, out var shortcut);
+                    return new AppShortcutItemViewModel(p, shortcut);
+                })
+                .OrderByDescending(vm => vm.HasHotkey || vm.HasAlias)
+                .ThenBy(vm => vm.Name)
+                .ToList();
+
+            AppShortcutsList.Clear();
+            foreach (var item in items)
+            {
+                AppShortcutsList.Add(item);
+            }
+
+            AppShortcutsView = CollectionViewSource.GetDefaultView(AppShortcutsList);
+            AppShortcutsView.Filter = FilterAppShortcuts;
+            appShortcutsView.ItemsSource = AppShortcutsView;
+
+            UpdateAppCountText();
+        }
+
+        private bool FilterAppShortcuts(object item)
+        {
+            if (item is not AppShortcutItemViewModel vm) return false;
+
+            string filter = tbAppFilter?.Text?.Trim();
+            if (string.IsNullOrWhiteSpace(filter)) return true;
+
+            return vm.Name.Contains(filter, System.StringComparison.OrdinalIgnoreCase) ||
+                   (!string.IsNullOrEmpty(vm.Location) && vm.Location.Contains(filter, System.StringComparison.OrdinalIgnoreCase)) ||
+                   (!string.IsNullOrEmpty(vm.Alias) && vm.Alias.Contains(filter, System.StringComparison.OrdinalIgnoreCase)) ||
+                   (!string.IsNullOrEmpty(vm.Hotkey) && vm.Hotkey.Contains(filter, System.StringComparison.OrdinalIgnoreCase));
+        }
+
+        private void TbAppFilter_OnTextChanged(object sender, TextChangedEventArgs e)
+        {
+            AppShortcutsView?.Refresh();
+            UpdateAppCountText();
+        }
+
+        private void UpdateAppCountText()
+        {
+            if (txtAppCount == null) return;
+            int count = AppShortcutsView?.Cast<object>().Count() ?? AppShortcutsList.Count;
+            txtAppCount.Text = $"Showing {count} applications";
+        }
+
+        private void BtnRefreshApps_OnClick(object sender, RoutedEventArgs e)
+        {
+            LoadAppShortcuts();
+        }
+
+        private void BtnEditAlias_OnClick(object sender, RoutedEventArgs e)
+        {
+            if (sender is not FrameworkElement element || element.DataContext is not AppShortcutItemViewModel vm)
+                return;
+
+            var shortcut = _settings.CustomShortcuts.FirstOrDefault(s => s.UniqueIdentifier == vm.UniqueIdentifier);
+            var dlg = new AppAliasDialog(vm.Program, shortcut, _settings);
+            if (dlg.ShowDialog() == true)
+            {
+                var updated = _settings.CustomShortcuts.FirstOrDefault(s => s.UniqueIdentifier == vm.UniqueIdentifier);
+                vm.Alias = updated?.Alias ?? string.Empty;
+                AppShortcutsView?.Refresh();
+            }
+        }
+
+        private void BtnClearAlias_OnClick(object sender, RoutedEventArgs e)
+        {
+            if (sender is not FrameworkElement element || element.DataContext is not AppShortcutItemViewModel vm)
+                return;
+
+            var shortcut = _settings.CustomShortcuts.FirstOrDefault(s => s.UniqueIdentifier == vm.UniqueIdentifier);
+            if (shortcut != null)
+            {
+                shortcut.Alias = string.Empty;
+                if (string.IsNullOrWhiteSpace(shortcut.Hotkey))
+                {
+                    _settings.CustomShortcuts.Remove(shortcut);
+                }
+                context.API.SaveSettingJsonStorage<Settings>();
+                Main.ResetCache();
+            }
+
+            vm.Alias = string.Empty;
+            AppShortcutsView?.Refresh();
+        }
+
+        private void BtnRecordHotkey_OnClick(object sender, RoutedEventArgs e)
+        {
+            if (sender is not FrameworkElement element || element.DataContext is not AppShortcutItemViewModel vm)
+                return;
+
+            var shortcut = _settings.CustomShortcuts.FirstOrDefault(s => s.UniqueIdentifier == vm.UniqueIdentifier);
+            var dlg = new AppHotkeyDialog(vm.Program, shortcut, _settings);
+            if (dlg.ShowDialog() == true)
+            {
+                var updated = _settings.CustomShortcuts.FirstOrDefault(s => s.UniqueIdentifier == vm.UniqueIdentifier);
+                vm.Hotkey = updated?.Hotkey ?? string.Empty;
+                AppShortcutsView?.Refresh();
+            }
+        }
+
+        private void BtnClearHotkey_OnClick(object sender, RoutedEventArgs e)
+        {
+            if (sender is not FrameworkElement element || element.DataContext is not AppShortcutItemViewModel vm)
+                return;
+
+            var shortcut = _settings.CustomShortcuts.FirstOrDefault(s => s.UniqueIdentifier == vm.UniqueIdentifier);
+            if (shortcut != null)
+            {
+                shortcut.Hotkey = string.Empty;
+                AppHotkeyManager.UnregisterShortcut(vm.UniqueIdentifier);
+
+                if (string.IsNullOrWhiteSpace(shortcut.Alias))
+                {
+                    _settings.CustomShortcuts.Remove(shortcut);
+                }
+                context.API.SaveSettingJsonStorage<Settings>();
+            }
+
+            vm.Hotkey = string.Empty;
+            AppShortcutsView?.Refresh();
+        }
+
+        private void AppShortcutEnabled_OnChanged(object sender, RoutedEventArgs e)
+        {
+            if (sender is not FrameworkElement element || element.DataContext is not AppShortcutItemViewModel vm)
+                return;
+
+            var shortcut = _settings.CustomShortcuts.FirstOrDefault(s => s.UniqueIdentifier == vm.UniqueIdentifier);
+            if (shortcut == null)
+            {
+                shortcut = new AppCustomShortcut
+                {
+                    UniqueIdentifier = vm.UniqueIdentifier,
+                    Name = vm.Name,
+                    Location = vm.Location,
+                    Alias = vm.Alias,
+                    Hotkey = vm.Hotkey,
+                    Enabled = vm.Enabled
+                };
+                _settings.CustomShortcuts.Add(shortcut);
+            }
+            else
+            {
+                shortcut.Enabled = vm.Enabled;
+            }
+
+            if (shortcut.Enabled && !string.IsNullOrWhiteSpace(shortcut.Hotkey))
+            {
+                AppHotkeyManager.RegisterOrUpdateShortcut(shortcut, () => Main._allProgramsSnapshot, out _);
+            }
+            else
+            {
+                AppHotkeyManager.UnregisterShortcut(shortcut.UniqueIdentifier);
+            }
+
+            context.API.SaveSettingJsonStorage<Settings>();
+            Main.ResetCache();
+        }
+
+        private void AppShortcutsView_SizeChanged(object sender, SizeChangedEventArgs e)
+        {
+            if (appShortcutsView.View is GridView gView)
+            {
+                double available = appShortcutsView.ActualWidth - SystemParameters.VerticalScrollBarWidth - 16;
+                if (available > 200)
+                {
+                    gView.Columns[0].Width = System.Math.Max(200, available - 130 - 180 - 75);
+                    gView.Columns[1].Width = 130;
+                    gView.Columns[2].Width = 180;
+                    gView.Columns[3].Width = 75;
+                }
+            }
+        }
+
+        #endregion
     }
 }

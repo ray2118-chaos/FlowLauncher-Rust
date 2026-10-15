@@ -400,6 +400,150 @@ pub unsafe extern "C" fn flow_sys_parse_command(
     }
 }
 
+pub const SYS_ACTION_SHUTDOWN: u32 = 1;
+pub const SYS_ACTION_RESTART: u32 = 2;
+pub const SYS_ACTION_RESTART_ADVANCED: u32 = 3;
+pub const SYS_ACTION_LOGOFF: u32 = 4;
+pub const SYS_ACTION_LOCK: u32 = 5;
+pub const SYS_ACTION_SLEEP: u32 = 6;
+pub const SYS_ACTION_HIBERNATE: u32 = 7;
+pub const SYS_ACTION_EMPTY_RECYCLE_BIN: u32 = 8;
+
+#[repr(C)]
+#[derive(Clone, Copy)]
+struct LUID {
+    low_part: u32,
+    high_part: i32,
+}
+
+#[repr(C)]
+#[derive(Clone, Copy)]
+struct LUID_AND_ATTRIBUTES {
+    luid: LUID,
+    attributes: u32,
+}
+
+#[repr(C)]
+struct TOKEN_PRIVILEGES {
+    privilege_count: u32,
+    privileges: [LUID_AND_ATTRIBUTES; 1],
+}
+
+const TOKEN_ADJUST_PRIVILEGES: u32 = 0x0020;
+const TOKEN_QUERY: u32 = 0x0008;
+const SE_PRIVILEGE_ENABLED: u32 = 0x00000002;
+
+const EWX_LOGOFF: u32 = 0x00000000;
+const EWX_SHUTDOWN: u32 = 0x00000001;
+const EWX_REBOOT: u32 = 0x00000002;
+const EWX_POWEROFF: u32 = 0x00000008;
+const EWX_BOOTOPTIONS: u32 = 0x01000000;
+const SHTDN_REASON_FLAG_PLANNED: u32 = 0x40000000;
+const SHTDN_REASON_MAJOR_OTHER: u32 = 0x00000000;
+const SHUTDOWN_REASON: u32 = SHTDN_REASON_MAJOR_OTHER | SHTDN_REASON_FLAG_PLANNED;
+
+#[link(name = "advapi32")]
+extern "system" {
+    fn OpenProcessToken(ProcessHandle: isize, DesiredAccess: u32, TokenHandle: *mut isize) -> i32;
+    fn LookupPrivilegeValueW(lpSystemName: *const u16, lpName: *const u16, lpLuid: *mut LUID) -> i32;
+    fn AdjustTokenPrivileges(
+        TokenHandle: isize,
+        DisableAllPrivileges: i32,
+        NewState: *const TOKEN_PRIVILEGES,
+        BufferLength: u32,
+        PreviousState: *mut TOKEN_PRIVILEGES,
+        ReturnLength: *mut u32,
+    ) -> i32;
+}
+
+#[link(name = "user32")]
+extern "system" {
+    fn ExitWindowsEx(uFlags: u32, dwReason: u32) -> i32;
+    fn LockWorkStation() -> i32;
+}
+
+#[link(name = "powrprof")]
+extern "system" {
+    fn SetSuspendState(bHibernate: u8, bForce: u8, bWakeupEventsDisabled: u8) -> u8;
+}
+
+#[link(name = "shell32")]
+extern "system" {
+    fn SHEmptyRecycleBinW(hwnd: isize, pszRootPath: *const u16, dwFlags: u32) -> i32;
+}
+
+#[link(name = "kernel32")]
+extern "system" {
+    fn GetCurrentProcess() -> isize;
+}
+
+unsafe fn enable_shutdown_privilege() -> bool {
+    let mut token: isize = 0;
+    if OpenProcessToken(GetCurrentProcess(), TOKEN_ADJUST_PRIVILEGES | TOKEN_QUERY, &mut token) == 0 {
+        return false;
+    }
+
+    let priv_name: Vec<u16> = "SeShutdownPrivilege\0".encode_utf16().collect();
+    let mut luid = LUID { low_part: 0, high_part: 0 };
+    if LookupPrivilegeValueW(std::ptr::null(), priv_name.as_ptr(), &mut luid) == 0 {
+        return false;
+    }
+
+    let tp = TOKEN_PRIVILEGES {
+        privilege_count: 1,
+        privileges: [LUID_AND_ATTRIBUTES {
+            luid,
+            attributes: SE_PRIVILEGE_ENABLED,
+        }],
+    };
+
+    AdjustTokenPrivileges(token, 0, &tp, 0, std::ptr::null_mut(), std::ptr::null_mut()) != 0
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn flow_sys_execute_command(action_id: u32) -> i32 {
+    match action_id {
+        SYS_ACTION_SHUTDOWN => {
+            let _ = enable_shutdown_privilege();
+            if ExitWindowsEx(EWX_SHUTDOWN | EWX_POWEROFF, SHUTDOWN_REASON) == 0 {
+                let _ = std::process::Command::new("shutdown").args(["/s", "/t", "0"]).spawn();
+            }
+            1
+        }
+        SYS_ACTION_RESTART => {
+            let _ = enable_shutdown_privilege();
+            if ExitWindowsEx(EWX_REBOOT, SHUTDOWN_REASON) == 0 {
+                let _ = std::process::Command::new("shutdown").args(["/r", "/t", "0"]).spawn();
+            }
+            1
+        }
+        SYS_ACTION_RESTART_ADVANCED => {
+            let _ = enable_shutdown_privilege();
+            if ExitWindowsEx(EWX_REBOOT | EWX_BOOTOPTIONS, SHUTDOWN_REASON) == 0 {
+                let _ = std::process::Command::new("shutdown").args(["/r", "/o", "/t", "0"]).spawn();
+            }
+            1
+        }
+        SYS_ACTION_LOGOFF => {
+            ExitWindowsEx(EWX_LOGOFF, SHUTDOWN_REASON)
+        }
+        SYS_ACTION_LOCK => {
+            LockWorkStation()
+        }
+        SYS_ACTION_SLEEP => {
+            SetSuspendState(0, 0, 0) as i32
+        }
+        SYS_ACTION_HIBERNATE => {
+            SetSuspendState(1, 0, 0) as i32
+        }
+        SYS_ACTION_EMPTY_RECYCLE_BIN => {
+            SHEmptyRecycleBinW(0, std::ptr::null(), 0)
+        }
+        _ => 0,
+    }
+}
+
+
 #[cfg(test)]
 mod tests {
     use super::*;

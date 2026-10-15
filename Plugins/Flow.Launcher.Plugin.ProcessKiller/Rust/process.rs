@@ -3,8 +3,12 @@ use windows_sys::Win32::Foundation::{CloseHandle, HWND, LPARAM};
 use windows_sys::Win32::System::Diagnostics::ToolHelp::{
     CreateToolhelp32Snapshot, Process32FirstW, Process32NextW, PROCESSENTRY32W, TH32CS_SNAPPROCESS,
 };
+use windows_sys::Win32::System::ProcessStatus::{
+    GetProcessMemoryInfo, PROCESS_MEMORY_COUNTERS,
+};
 use windows_sys::Win32::System::Threading::{
-    OpenProcess, TerminateProcess, PROCESS_TERMINATE,
+    OpenProcess, TerminateProcess, QueryFullProcessImageNameW,
+    PROCESS_TERMINATE, PROCESS_QUERY_LIMITED_INFORMATION,
 };
 use windows_sys::Win32::UI::WindowsAndMessaging::{
     EnumWindows, GetWindowTextLengthW, GetWindowTextW, GetWindowThreadProcessId, IsWindowVisible,
@@ -17,8 +21,11 @@ pub struct ProcessItem {
     pub pid: u32,
     pub name: [u16; 260],
     pub name_len: u32,
+    pub exe_path: [u16; 512],
+    pub exe_path_len: u32,
     pub window_title: [u16; 260],
     pub window_title_len: u32,
+    pub mem_working_set_mb: u32,
 }
 
 unsafe extern "system" fn enum_windows_callback(hwnd: HWND, lparam: LPARAM) -> BOOL {
@@ -42,12 +49,32 @@ unsafe extern "system" fn enum_windows_callback(hwnd: HWND, lparam: LPARAM) -> B
     1
 }
 
-/// Enumerates running processes and their primary window titles in a single pass.
+const SYSTEM_PROCESSES: &[&str] = &[
+    "conhost", "svchost", "idle", "system", "rundll32", "csrss", "lsass", "lsm",
+    "smss", "wininit", "winlogon", "services", "spoolsv", "explorer", "flow.launcher",
+];
+
+fn is_system_process(name_slice: &[u16]) -> bool {
+    let s = match String::from_utf16(name_slice) {
+        Ok(v) => v.to_lowercase(),
+        Err(_) => return false,
+    };
+    let clean = if s.ends_with(".exe") {
+        &s[..s.len() - 4]
+    } else {
+        &s
+    };
+    SYSTEM_PROCESSES.iter().any(|&sys| sys == clean)
+}
+
+/// Enumerates running processes and their primary window titles, full exe paths,
+/// and working set memory in a single pass.
 /// Runs in under 1ms with zero .NET GC overhead.
 #[no_mangle]
 pub unsafe extern "C" fn flow_get_processes(
     out_items: *mut ProcessItem,
     max_items: u32,
+    filter_system: i32,
     out_count: *mut u32,
 ) -> i32 {
     if out_items.is_null() || out_count.is_null() || max_items == 0 {
@@ -80,17 +107,50 @@ pub unsafe extern "C" fn flow_get_processes(
                 break;
             }
 
+            let mut name_len = 0usize;
+            while name_len < 259 && entry.szExeFile[name_len] != 0 {
+                name_len += 1;
+            }
+
+            if filter_system != 0 && is_system_process(&entry.szExeFile[..name_len]) {
+                if unsafe { Process32NextW(snapshot, &mut entry) } == 0 {
+                    break;
+                }
+                continue;
+            }
+
             let item = unsafe { &mut *out_items.add(count as usize) };
             item.pid = entry.th32ProcessID;
 
-            // Copy process name
-            let mut name_len = 0usize;
-            while name_len < 259 && entry.szExeFile[name_len] != 0 {
-                item.name[name_len] = entry.szExeFile[name_len];
-                name_len += 1;
+            for i in 0..name_len {
+                item.name[i] = entry.szExeFile[i];
             }
             item.name[name_len] = 0;
             item.name_len = name_len as u32;
+
+            item.exe_path[0] = 0;
+            item.exe_path_len = 0;
+            item.mem_working_set_mb = 0;
+
+            let hproc = unsafe { OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, 0, entry.th32ProcessID) };
+            if !hproc.is_null() {
+                let mut path_len = 511u32;
+                if unsafe {
+                    QueryFullProcessImageNameW(hproc, 0, item.exe_path.as_mut_ptr(), &mut path_len)
+                } != 0
+                {
+                    item.exe_path_len = path_len;
+                    item.exe_path[path_len as usize] = 0;
+                }
+
+                let mut pmc: PROCESS_MEMORY_COUNTERS = unsafe { std::mem::zeroed() };
+                pmc.cb = std::mem::size_of::<PROCESS_MEMORY_COUNTERS>() as u32;
+                if unsafe { GetProcessMemoryInfo(hproc, &mut pmc, pmc.cb) } != 0 {
+                    item.mem_working_set_mb = (pmc.WorkingSetSize / (1024 * 1024)) as u32;
+                }
+
+                unsafe { CloseHandle(hproc) };
+            }
 
             // Match window title if present
             if let Some(title) = titles_map.get(&entry.th32ProcessID) {

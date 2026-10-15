@@ -55,25 +55,42 @@ public abstract class FirefoxBookmarkLoaderBase : IBookmarkLoader
         }
 
         bool readDirectly = false;
-        try
+        if (Flow.Launcher.Infrastructure.Native.FlowNativeMethods.IsAvailable)
         {
-            using var dbConnection = new SqliteConnection($"Data Source={placesPath};Mode=ReadOnly;Pooling=False");
-            dbConnection.Open();
-            using var reader = new SqliteCommand(QueryAllBookmarks, dbConnection).ExecuteReader();
-            bookmarks = reader
-                .Select(
-                    x => new Bookmark(
-                        x["title"] is DBNull ? string.Empty : x["title"].ToString(),
-                        x["url"].ToString(),
-                        "Firefox"
-                    )
-                )
-                .ToList();
-            readDirectly = true;
+            var buffer = new Flow.Launcher.Infrastructure.Native.NativeBookmarkItem[8192];
+            if (Flow.Launcher.Infrastructure.Native.FlowNativeMethods.ParseFirefoxBookmarks(placesPath, buffer, out var count))
+            {
+                bookmarks.EnsureCapacity(count);
+                for (int i = 0; i < count; i++)
+                {
+                    bookmarks.Add(new Bookmark(buffer[i].GetTitle(), buffer[i].GetUrl(), "Firefox"));
+                }
+                readDirectly = true;
+            }
         }
-        catch
+
+        if (!readDirectly)
         {
-            // Fall back to copy if locked
+            try
+            {
+                using var dbConnection = new SqliteConnection($"Data Source={placesPath};Mode=ReadOnly;Pooling=False");
+                dbConnection.Open();
+                using var reader = new SqliteCommand(QueryAllBookmarks, dbConnection).ExecuteReader();
+                bookmarks = reader
+                    .Select(
+                        x => new Bookmark(
+                            x["title"] is DBNull ? string.Empty : x["title"].ToString(),
+                            x["url"].ToString(),
+                            "Firefox"
+                        )
+                    )
+                    .ToList();
+                readDirectly = true;
+            }
+            catch
+            {
+                // Fall back to copy if locked
+            }
         }
 
         if (!readDirectly)

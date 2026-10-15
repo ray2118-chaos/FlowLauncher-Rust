@@ -14,7 +14,7 @@
 
     <!-- Theme & Icon Pack Settings -->
     <system:Boolean x:Key="ThemeBlurEnabled">True</system:Boolean>
-    <system:String x:Key="ThemeIconPack">Windows11</system:String>
+    <system:String x:Key="ThemeIconPack">Default</system:String>
     <system:String x:Key="SystemBG">Light</system:String>
     <Color x:Key="LightBG">#F0F6FC</Color>
     <Color x:Key="DarkBG">#EAF2FA</Color>

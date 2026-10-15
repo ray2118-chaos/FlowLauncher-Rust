@@ -4,218 +4,488 @@
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-    Height="520"
+    xmlns:ui="http://schemas.inkore.net/lib/ui/wpf/modern"
+    xmlns:local="clr-namespace:Flow.Launcher.Plugin.Program"
+    Height="540"
     DataContext="{Binding RelativeSource={RelativeSource Self}}"
+    Loaded="UserControl_Loaded"
     mc:Ignorable="d">
     <UserControl.Resources>
         <BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter" />
+        <local:InverseBoolToVisibilityConverter x:Key="InverseBoolToVisibilityConverter" />
+
+        <!-- Clean Modern TabItem Style without close button, stray squares or glyph issues -->
+        <Style x:Key="ModernTabItemStyle" TargetType="TabItem">
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="Foreground" Value="{DynamicResource PopupTextColor}" />
+            <Setter Property="FontSize" Value="13" />
+            <Setter Property="FontWeight" Value="Normal" />
+            <Setter Property="Padding" Value="16,8" />
+            <Setter Property="Margin" Value="0,0,6,0" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="TabItem">
+                        <Border x:Name="TabBorder"
+                                Background="Transparent"
+                                BorderBrush="Transparent"
+                                BorderThickness="0,0,0,2.5"
+                                CornerRadius="4,4,0,0"
+                                Padding="{TemplateBinding Padding}">
+                            <ContentPresenter x:Name="ContentSite"
+                                              VerticalAlignment="Center"
+                                              HorizontalAlignment="Center"
+                                              ContentSource="Header"
+                                              RecognizesAccessKey="False" />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="TabBorder" Property="Background" Value="{DynamicResource Color02B}" />
+                            </Trigger>
+                            <Trigger Property="IsSelected" Value="True">
+                                <Setter TargetName="TabBorder" Property="BorderBrush" Value="{DynamicResource Color05B}" />
+                                <Setter TargetName="TabBorder" Property="Background" Value="{DynamicResource Color01B}" />
+                                <Setter Property="FontWeight" Value="SemiBold" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- Clean Modern TabControl Style without add-tab button or extraneous buttons -->
+        <Style x:Key="ModernTabControlStyle" TargetType="TabControl">
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="Padding" Value="0" />
+            <Setter Property="ItemContainerStyle" Value="{StaticResource ModernTabItemStyle}" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="TabControl">
+                        <Grid>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="*" />
+                            </Grid.RowDefinitions>
+                            <!-- Clean header strip with subtle bottom border -->
+                            <Border Grid.Row="0"
+                                    BorderBrush="{DynamicResource Color03B}"
+                                    BorderThickness="0,0,0,1"
+                                    Margin="0,0,0,6"
+                                    Padding="4,0,4,0">
+                                <TabPanel IsItemsHost="True" />
+                            </Border>
+                            <!-- Active tab content area -->
+                            <ContentPresenter Grid.Row="1"
+                                              ContentSource="SelectedContent"
+                                              Margin="0" />
+                        </Grid>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
     </UserControl.Resources>
-    <Grid Margin="{StaticResource SettingPanelMargin}">
-        <Grid.RowDefinitions>
-            <RowDefinition Height="Auto" />
-            <RowDefinition Height="Auto" />
-            <RowDefinition Height="*" />
-            <RowDefinition Height="Auto" />
-        </Grid.RowDefinitions>
-        <DockPanel HorizontalAlignment="Stretch" LastChildFill="True">
-            <TextBlock
-                MinWidth="120"
-                Margin="{StaticResource SettingPanelItemRightTopBottomMargin}"
-                VerticalAlignment="Center"
-                Text="{DynamicResource flowlauncher_plugin_program_index_source}" />
-            <WrapPanel
-                Width="Auto"
-                Margin="{StaticResource SettingPanelItemTopBottomMargin}"
-                HorizontalAlignment="Right"
-                DockPanel.Dock="Right">
-                <CheckBox
-                    Name="UWPEnabled"
-                    Margin="{StaticResource SettingPanelItemRightMargin}"
-                    Content="{DynamicResource flowlauncher_plugin_program_index_uwp}"
-                    IsChecked="{Binding EnableUWP}"
-                    ToolTip="{DynamicResource flowlauncher_plugin_program_index_uwp_tooltip}"
-                    Visibility="{Binding ShowUWPCheckbox, Converter={StaticResource BooleanToVisibilityConverter}}" />
-                <CheckBox
-                    Name="StartMenuEnabled"
-                    Margin="{StaticResource SettingPanelItemRightMargin}"
-                    Content="{DynamicResource flowlauncher_plugin_program_index_start}"
-                    IsChecked="{Binding EnableStartMenuSource}"
-                    ToolTip="{DynamicResource flowlauncher_plugin_program_index_start_tooltip}" />
-                <CheckBox
-                    Name="RegistryEnabled"
-                    Margin="{StaticResource SettingPanelItemRightMargin}"
-                    Content="{DynamicResource flowlauncher_plugin_program_index_registry}"
-                    IsChecked="{Binding EnableRegistrySource}"
-                    ToolTip="{DynamicResource flowlauncher_plugin_program_index_registry_tooltip}" />
-                <CheckBox
-                    Name="PATHEnabled"
-                    Content="{DynamicResource flowlauncher_plugin_program_index_PATH}"
-                    IsChecked="{Binding EnablePATHSource}"
-                    ToolTip="{DynamicResource flowlauncher_plugin_program_index_PATH_tooltip}" />
-            </WrapPanel>
-        </DockPanel>
-        <StackPanel
-            Grid.Row="1"
-            HorizontalAlignment="Stretch"
-            Orientation="Vertical">
-            <Separator Style="{StaticResource SettingPanelSeparatorStyle}" />
-            <DockPanel HorizontalAlignment="Stretch" LastChildFill="True">
+
+    <TabControl Style="{StaticResource ModernTabControlStyle}">
+        <!-- TAB 1: Applications, Shortcuts & Aliases (Raycast UI) -->
+        <TabItem Header="Shortcuts &amp; Aliases">
+            <Grid Margin="12,12,12,6">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="*" />
+                </Grid.RowDefinitions>
+
+                <!-- Search / Filter box -->
+                <Grid Grid.Row="0" Margin="0,0,0,8">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <TextBox
+                        x:Name="tbAppFilter"
+                        Height="34"
+                        FontSize="13"
+                        Padding="8,4"
+                        ui:ControlHelper.PlaceholderText="Filter applications by name, alias or path..."
+                        TextChanged="TbAppFilter_OnTextChanged"
+                        Style="{StaticResource DefaultTextBoxStyle}" />
+                    <Button
+                        Grid.Column="1"
+                        Margin="8,0,0,0"
+                        Padding="14,4"
+                        Height="34"
+                        Click="BtnRefreshApps_OnClick"
+                        Content="Refresh"
+                        Style="{StaticResource DefaultButtonStyle}" />
+                </Grid>
+
+                <!-- Status line -->
                 <TextBlock
-                    MinWidth="120"
-                    Margin="{StaticResource SettingPanelItemRightTopBottomMargin}"
-                    VerticalAlignment="Center"
-                    Text="{DynamicResource flowlauncher_plugin_program_index_option}" />
-                <WrapPanel
-                    Width="Auto"
-                    HorizontalAlignment="Right"
-                    DockPanel.Dock="Right">
-                    <CheckBox
-                        Margin="{StaticResource SettingPanelItemRightTopBottomMargin}"
-                        Content="{DynamicResource flowlauncher_plugin_program_enable_hidelnkpath}"
-                        IsChecked="{Binding HideAppsPath}"
-                        ToolTip="{DynamicResource flowlauncher_plugin_program_enable_hidelnkpath_tooltip}" />
-                    <CheckBox
-                        Margin="{StaticResource SettingPanelItemRightTopBottomMargin}"
-                        Content="{DynamicResource flowlauncher_plugin_program_enable_hideuninstallers}"
-                        IsChecked="{Binding HideUninstallers}"
-                        ToolTip="{DynamicResource flowlauncher_plugin_program_enable_hideuninstallers_tooltip}" />
-                    <CheckBox
-                        Margin="{StaticResource SettingPanelItemRightTopBottomMargin}"
-                        Content="{DynamicResource flowlauncher_plugin_program_enable_description}"
-                        IsChecked="{Binding EnableDescription}"
-                        ToolTip="{DynamicResource flowlauncher_plugin_program_enable_description_tooltip}" />
-                    <CheckBox
-                        Content="{DynamicResource flowlauncher_plugin_program_enable_hideduplicatedwindowsapp}"
-                        IsChecked="{Binding HideDuplicatedWindowsApp}"
-                        ToolTip="{DynamicResource flowlauncher_plugin_program_enable_hideduplicatedwindowsapp_tooltip}" />
-                </WrapPanel>
-            </DockPanel>
-            <Separator Style="{StaticResource SettingPanelSeparatorStyle}" />
-            <StackPanel
-                HorizontalAlignment="Left"
-                VerticalAlignment="Center"
-                Orientation="Horizontal">
-                <Button
-                    x:Name="btnLoadAllProgramSource"
-                    MinWidth="120"
-                    Margin="{StaticResource SettingPanelItemRightTopBottomMargin}"
-                    HorizontalAlignment="Right"
-                    Click="btnLoadAllProgramSource_OnClick"
-                    Content="{DynamicResource flowlauncher_plugin_program_all_programs}" />
-                <Button
-                    x:Name="btnProgramSuffixes"
-                    MinWidth="120"
-                    Margin="{StaticResource SettingPanelItemRightTopBottomMargin}"
-                    HorizontalAlignment="Right"
-                    Click="BtnProgramSuffixes_OnClick"
-                    Content="{DynamicResource flowlauncher_plugin_program_suffixes}" />
-                <Button
-                    x:Name="btnReindex"
-                    MinWidth="120"
-                    Margin="{StaticResource SettingPanelItemRightTopBottomMargin}"
-                    HorizontalAlignment="Right"
-                    Click="btnReindex_Click"
-                    Content="{DynamicResource flowlauncher_plugin_program_reindex}" />
-                <StackPanel
-                    x:Name="indexingPanel"
-                    HorizontalAlignment="Left"
-                    Orientation="Horizontal"
-                    Visibility="Hidden">
-                    <ProgressBar
-                        x:Name="progressBarIndexing"
-                        Width="80"
-                        Height="20"
-                        Margin="{StaticResource SettingPanelItemRightTopBottomMargin}"
-                        IsIndeterminate="True"
-                        Maximum="100"
-                        Minimum="0" />
+                    Grid.Row="1"
+                    x:Name="txtAppCount"
+                    FontSize="11.5"
+                    Opacity="0.65"
+                    Margin="2,0,0,8"
+                    Text="Loading applications..."
+                    Foreground="{DynamicResource PopupTextColor}" />
+
+                <!-- Application List -->
+                <ListView
+                    x:Name="appShortcutsView"
+                    Grid.Row="2"
+                    VirtualizingStackPanel.IsVirtualizing="True"
+                    VirtualizingStackPanel.VirtualizationMode="Recycling"
+                    ScrollViewer.CanContentScroll="True"
+                    BorderBrush="{DynamicResource Color03B}"
+                    BorderThickness="1"
+                    Background="{DynamicResource Color00B}"
+                    SelectionMode="Single"
+                    SizeChanged="AppShortcutsView_SizeChanged">
+                    <ListView.View>
+                        <GridView>
+                            <!-- Column 1: Application -->
+                            <GridViewColumn Header="Application" Width="260">
+                                <GridViewColumn.CellTemplate>
+                                    <DataTemplate>
+                                        <DockPanel LastChildFill="True" Margin="2,4">
+                                            <Border Width="28" Height="28" CornerRadius="4" Margin="0,0,10,0" VerticalAlignment="Center">
+                                                <Image Source="{Binding Icon}" Width="28" Height="28" RenderOptions.BitmapScalingMode="HighQuality" />
+                                            </Border>
+                                            <StackPanel VerticalAlignment="Center">
+                                                <TextBlock Text="{Binding Name}" FontWeight="SemiBold" FontSize="12.5" TextTrimming="CharacterEllipsis" Foreground="{DynamicResource PopupTextColor}" />
+                                                <TextBlock Text="{Binding Location}" FontSize="10.5" Opacity="0.55" TextTrimming="CharacterEllipsis" Foreground="{DynamicResource PopupTextColor}" />
+                                            </StackPanel>
+                                        </DockPanel>
+                                    </DataTemplate>
+                                </GridViewColumn.CellTemplate>
+                            </GridViewColumn>
+
+                            <!-- Column 2: Alias -->
+                            <GridViewColumn Header="Alias" Width="130">
+                                <GridViewColumn.CellTemplate>
+                                    <DataTemplate>
+                                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="2,0">
+                                            <!-- Button when No Alias -->
+                                            <Button
+                                                Content="{Binding AliasDisplayText}"
+                                                Click="BtnEditAlias_OnClick"
+                                                Padding="10,3"
+                                                FontSize="11"
+                                                Cursor="Hand"
+                                                Visibility="{Binding HasAlias, Converter={StaticResource InverseBoolToVisibilityConverter}}"
+                                                Style="{StaticResource DefaultButtonStyle}" />
+                                            <!-- Pill when Alias is set -->
+                                            <Border
+                                                Visibility="{Binding HasAlias, Converter={StaticResource BooleanToVisibilityConverter}}"
+                                                CornerRadius="5"
+                                                Background="{DynamicResource Color02B}"
+                                                BorderBrush="{DynamicResource Color04B}"
+                                                BorderThickness="1"
+                                                Padding="8,3">
+                                                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                                    <TextBlock
+                                                        Text="{Binding Alias}"
+                                                        FontWeight="SemiBold"
+                                                        FontSize="11.5"
+                                                        Foreground="{DynamicResource PopupTextColor}"
+                                                        Cursor="Hand"
+                                                        MouseLeftButtonUp="BtnEditAlias_OnClick"
+                                                        ToolTip="Click to edit alias" />
+                                                    <Button
+                                                        Click="BtnClearAlias_OnClick"
+                                                        Margin="6,0,0,0"
+                                                        Padding="2"
+                                                        Background="Transparent"
+                                                        BorderThickness="0"
+                                                        Cursor="Hand"
+                                                        ToolTip="Remove alias">
+                                                        <Path Data="M 0,0 7,7 M 0,7 7,0" Stroke="{DynamicResource PopupTextColor}" StrokeThickness="1" Width="7" Height="7" />
+                                                    </Button>
+                                                </StackPanel>
+                                            </Border>
+                                        </StackPanel>
+                                    </DataTemplate>
+                                </GridViewColumn.CellTemplate>
+                            </GridViewColumn>
+
+                            <!-- Column 3: Hotkey -->
+                            <GridViewColumn Header="Hotkey" Width="180">
+                                <GridViewColumn.CellTemplate>
+                                    <DataTemplate>
+                                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="2,0">
+                                            <!-- Button when No Hotkey -->
+                                            <Button
+                                                Content="{Binding HotkeyDisplayText}"
+                                                Click="BtnRecordHotkey_OnClick"
+                                                Padding="10,3"
+                                                FontSize="11"
+                                                Cursor="Hand"
+                                                Visibility="{Binding HasHotkey, Converter={StaticResource InverseBoolToVisibilityConverter}}"
+                                                Style="{StaticResource DefaultButtonStyle}" />
+                                            <!-- Pill when Hotkey is set -->
+                                            <Border
+                                                Visibility="{Binding HasHotkey, Converter={StaticResource BooleanToVisibilityConverter}}"
+                                                CornerRadius="5"
+                                                Background="{DynamicResource Color02B}"
+                                                BorderBrush="{DynamicResource Color04B}"
+                                                BorderThickness="1"
+                                                Padding="8,3">
+                                                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                                    <TextBlock
+                                                        Text="{Binding Hotkey}"
+                                                        FontWeight="SemiBold"
+                                                        FontSize="11.5"
+                                                        Foreground="{DynamicResource PopupTextColor}"
+                                                        Cursor="Hand"
+                                                        MouseLeftButtonUp="BtnRecordHotkey_OnClick"
+                                                        ToolTip="Click to re-record hotkey" />
+                                                    <Button
+                                                        Click="BtnClearHotkey_OnClick"
+                                                        Margin="6,0,0,0"
+                                                        Padding="2"
+                                                        Background="Transparent"
+                                                        BorderThickness="0"
+                                                        Cursor="Hand"
+                                                        ToolTip="Clear hotkey">
+                                                        <Path Data="M 0,0 7,7 M 0,7 7,0" Stroke="{DynamicResource PopupTextColor}" StrokeThickness="1" Width="7" Height="7" />
+                                                    </Button>
+                                                </StackPanel>
+                                            </Border>
+                                        </StackPanel>
+                                    </DataTemplate>
+                                </GridViewColumn.CellTemplate>
+                            </GridViewColumn>
+
+                            <!-- Column 4: Enabled -->
+                            <GridViewColumn Header="Enabled" Width="75">
+                                <GridViewColumn.CellTemplate>
+                                    <DataTemplate>
+                                        <CheckBox
+                                            IsChecked="{Binding Enabled}"
+                                            Checked="AppShortcutEnabled_OnChanged"
+                                            Unchecked="AppShortcutEnabled_OnChanged"
+                                            HorizontalAlignment="Center"
+                                            VerticalAlignment="Center" />
+                                    </DataTemplate>
+                                </GridViewColumn.CellTemplate>
+                            </GridViewColumn>
+                        </GridView>
+                    </ListView.View>
+                </ListView>
+            </Grid>
+        </TabItem>
+
+        <!-- TAB 2: Indexing & Sources (Existing Settings) -->
+        <TabItem Header="Indexing &amp; Sources">
+            <Grid Margin="{StaticResource SettingPanelMargin}">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="*" />
+                    <RowDefinition Height="Auto" />
+                </Grid.RowDefinitions>
+                <DockPanel HorizontalAlignment="Stretch" LastChildFill="True">
                     <TextBlock
-                        Height="20"
+                        MinWidth="120"
+                        Margin="{StaticResource SettingPanelItemRightTopBottomMargin}"
+                        VerticalAlignment="Center"
+                        Text="{DynamicResource flowlauncher_plugin_program_index_source}" />
+                    <WrapPanel
+                        Width="Auto"
                         Margin="{StaticResource SettingPanelItemTopBottomMargin}"
-                        HorizontalAlignment="Center"
-                        Text="{DynamicResource flowlauncher_plugin_program_indexing}" />
+                        HorizontalAlignment="Right"
+                        DockPanel.Dock="Right">
+                        <CheckBox
+                            Name="UWPEnabled"
+                            Margin="{StaticResource SettingPanelItemRightMargin}"
+                            Content="{DynamicResource flowlauncher_plugin_program_index_uwp}"
+                            IsChecked="{Binding EnableUWP}"
+                            ToolTip="{DynamicResource flowlauncher_plugin_program_index_uwp_tooltip}"
+                            Visibility="{Binding ShowUWPCheckbox, Converter={StaticResource BooleanToVisibilityConverter}}" />
+                        <CheckBox
+                            Name="StartMenuEnabled"
+                            Margin="{StaticResource SettingPanelItemRightMargin}"
+                            Content="{DynamicResource flowlauncher_plugin_program_index_start}"
+                            IsChecked="{Binding EnableStartMenuSource}"
+                            ToolTip="{DynamicResource flowlauncher_plugin_program_index_start_tooltip}" />
+                        <CheckBox
+                            Name="RegistryEnabled"
+                            Margin="{StaticResource SettingPanelItemRightMargin}"
+                            Content="{DynamicResource flowlauncher_plugin_program_index_registry}"
+                            IsChecked="{Binding EnableRegistrySource}"
+                            ToolTip="{DynamicResource flowlauncher_plugin_program_index_registry_tooltip}" />
+                        <CheckBox
+                            Name="PATHEnabled"
+                            Content="{DynamicResource flowlauncher_plugin_program_index_PATH}"
+                            IsChecked="{Binding EnablePATHSource}"
+                            ToolTip="{DynamicResource flowlauncher_plugin_program_index_PATH_tooltip}" />
+                    </WrapPanel>
+                </DockPanel>
+                <StackPanel
+                    Grid.Row="1"
+                    HorizontalAlignment="Stretch"
+                    Orientation="Vertical">
+                    <Separator Style="{StaticResource SettingPanelSeparatorStyle}" />
+                    <DockPanel HorizontalAlignment="Stretch" LastChildFill="True">
+                        <TextBlock
+                            MinWidth="120"
+                            Margin="{StaticResource SettingPanelItemRightTopBottomMargin}"
+                            VerticalAlignment="Center"
+                            Text="{DynamicResource flowlauncher_plugin_program_index_option}" />
+                        <WrapPanel
+                            Width="Auto"
+                            HorizontalAlignment="Right"
+                            DockPanel.Dock="Right">
+                            <CheckBox
+                                Margin="{StaticResource SettingPanelItemRightTopBottomMargin}"
+                                Content="{DynamicResource flowlauncher_plugin_program_enable_hidelnkpath}"
+                                IsChecked="{Binding HideAppsPath}"
+                                ToolTip="{DynamicResource flowlauncher_plugin_program_enable_hidelnkpath_tooltip}" />
+                            <CheckBox
+                                Margin="{StaticResource SettingPanelItemRightTopBottomMargin}"
+                                Content="{DynamicResource flowlauncher_plugin_program_enable_hideuninstallers}"
+                                IsChecked="{Binding HideUninstallers}"
+                                ToolTip="{DynamicResource flowlauncher_plugin_program_enable_hideuninstallers_tooltip}" />
+                            <CheckBox
+                                Margin="{StaticResource SettingPanelItemRightTopBottomMargin}"
+                                Content="{DynamicResource flowlauncher_plugin_program_enable_description}"
+                                IsChecked="{Binding EnableDescription}"
+                                ToolTip="{DynamicResource flowlauncher_plugin_program_enable_description_tooltip}" />
+                            <CheckBox
+                                Content="{DynamicResource flowlauncher_plugin_program_enable_hideduplicatedwindowsapp}"
+                                IsChecked="{Binding HideDuplicatedWindowsApp}"
+                                ToolTip="{DynamicResource flowlauncher_plugin_program_enable_hideduplicatedwindowsapp_tooltip}" />
+                        </WrapPanel>
+                    </DockPanel>
+                    <Separator Style="{StaticResource SettingPanelSeparatorStyle}" />
+                    <StackPanel
+                        HorizontalAlignment="Left"
+                        VerticalAlignment="Center"
+                        Orientation="Horizontal">
+                        <Button
+                            x:Name="btnLoadAllProgramSource"
+                            MinWidth="120"
+                            Margin="{StaticResource SettingPanelItemRightTopBottomMargin}"
+                            HorizontalAlignment="Right"
+                            Click="btnLoadAllProgramSource_OnClick"
+                            Content="{DynamicResource flowlauncher_plugin_program_all_programs}" />
+                        <Button
+                            x:Name="btnProgramSuffixes"
+                            MinWidth="120"
+                            Margin="{StaticResource SettingPanelItemRightTopBottomMargin}"
+                            HorizontalAlignment="Right"
+                            Click="BtnProgramSuffixes_OnClick"
+                            Content="{DynamicResource flowlauncher_plugin_program_suffixes}" />
+                        <Button
+                            x:Name="btnReindex"
+                            MinWidth="120"
+                            Margin="{StaticResource SettingPanelItemRightTopBottomMargin}"
+                            HorizontalAlignment="Right"
+                            Click="btnReindex_Click"
+                            Content="{DynamicResource flowlauncher_plugin_program_reindex}" />
+                        <StackPanel
+                            x:Name="indexingPanel"
+                            HorizontalAlignment="Left"
+                            Orientation="Horizontal"
+                            Visibility="Collapsed">
+                            <ProgressBar
+                                x:Name="progressBarIndexing"
+                                Width="80"
+                                Height="20"
+                                Margin="{StaticResource SettingPanelItemRightTopBottomMargin}"
+                                IsIndeterminate="True"
+                                Maximum="100"
+                                Minimum="0" />
+                            <TextBlock
+                                Height="20"
+                                Margin="{StaticResource SettingPanelItemTopBottomMargin}"
+                                HorizontalAlignment="Center"
+                                Text="{DynamicResource flowlauncher_plugin_program_indexing}" />
+                        </StackPanel>
+                    </StackPanel>
                 </StackPanel>
-            </StackPanel>
-        </StackPanel>
-        <ListView
-            x:Name="programSourceView"
-            Grid.Row="2"
-            Margin="{StaticResource SettingPanelItemTopBottomMargin}"
-            AllowDrop="True"
-            BorderBrush="DarkGray"
-            BorderThickness="1"
-            DragEnter="programSourceView_DragEnter"
-            Drop="programSourceView_Drop"
-            GridViewColumnHeader.Click="GridViewColumnHeaderClickedHandler"
-            MouseDoubleClick="programSourceView_MouseDoubleClick"
-            PreviewMouseRightButtonUp="ProgramSourceView_PreviewMouseRightButtonUp"
-            SelectionChanged="programSourceView_SelectionChanged"
-            SelectionMode="Extended"
-            SizeChanged="ListView_SizeChanged">
-            <ListView.View>
-                <GridView>
-                    <GridViewColumn Width="150" Header="{DynamicResource flowlauncher_plugin_program_name}">
-                        <GridViewColumn.CellTemplate>
-                            <DataTemplate>
-                                <TextBlock Text="{Binding Name}" />
-                            </DataTemplate>
-                        </GridViewColumn.CellTemplate>
-                    </GridViewColumn>
-                    <GridViewColumn Width="90" Header="{DynamicResource flowlauncher_plugin_program_status}">
-                        <GridViewColumn.CellTemplate>
-                            <DataTemplate>
-                                <TextBlock TextAlignment="Left">
-                                    <TextBlock.Style>
-                                        <Style TargetType="TextBlock">
-                                            <Setter Property="Text" Value="{DynamicResource flowlauncher_plugin_program_false}" />
-                                            <Style.Triggers>
-                                                <DataTrigger Binding="{Binding Enabled, UpdateSourceTrigger=PropertyChanged}" Value="True">
-                                                    <Setter Property="Text" Value="{DynamicResource flowlauncher_plugin_program_true}" />
-                                                </DataTrigger>
-                                            </Style.Triggers>
-                                        </Style>
-                                    </TextBlock.Style>
-                                </TextBlock>
-                            </DataTemplate>
-                        </GridViewColumn.CellTemplate>
-                    </GridViewColumn>
-                    <GridViewColumn Header="{DynamicResource flowlauncher_plugin_program_location}">
-                        <GridViewColumn.CellTemplate>
-                            <DataTemplate>
-                                <TextBlock Text="{Binding Location}" TextTrimming="CharacterEllipsis" />
-                            </DataTemplate>
-                        </GridViewColumn.CellTemplate>
-                    </GridViewColumn>
-                </GridView>
-            </ListView.View>
-        </ListView>
-        <DockPanel Grid.Row="3">
-            <StackPanel HorizontalAlignment="Right" Orientation="Horizontal">
-                <Button
-                    x:Name="btnProgramSourceStatus"
-                    MinWidth="100"
+                <ListView
+                    x:Name="programSourceView"
+                    Grid.Row="2"
                     Margin="{StaticResource SettingPanelItemTopBottomMargin}"
-                    Click="btnProgramSourceStatus_OnClick"
-                    Content="{DynamicResource flowlauncher_plugin_program_disable}" />
-                <Button
-                    x:Name="btnEditProgramSource"
-                    MinWidth="100"
-                    Margin="{StaticResource SettingPanelItemLeftTopBottomMargin}"
-                    Click="btnEditProgramSource_OnClick"
-                    Content="{DynamicResource flowlauncher_plugin_program_edit}" />
-                <Button
-                    x:Name="btnDeleteProgramSource"
-                    MinWidth="100"
-                    Margin="{StaticResource SettingPanelItemLeftTopBottomMargin}"
-                    Click="btnDeleteProgramSource_OnClick"
-                    Content="{DynamicResource flowlauncher_plugin_program_delete}" />
-                <Button
-                    x:Name="btnAddProgramSource"
-                    MinWidth="100"
-                    Margin="{StaticResource SettingPanelItemLeftTopBottomMargin}"
-                    Click="btnAddProgramSource_OnClick"
-                    Content="{DynamicResource flowlauncher_plugin_program_add}" />
-            </StackPanel>
-        </DockPanel>
-    </Grid>
+                    AllowDrop="True"
+                    BorderBrush="DarkGray"
+                    BorderThickness="1"
+                    DragEnter="programSourceView_DragEnter"
+                    Drop="programSourceView_Drop"
+                    GridViewColumnHeader.Click="GridViewColumnHeaderClickedHandler"
+                    MouseDoubleClick="programSourceView_MouseDoubleClick"
+                    PreviewMouseRightButtonUp="ProgramSourceView_PreviewMouseRightButtonUp"
+                    SelectionChanged="programSourceView_SelectionChanged"
+                    SelectionMode="Extended"
+                    SizeChanged="ListView_SizeChanged">
+                    <ListView.View>
+                        <GridView>
+                            <GridViewColumn Width="150" Header="{DynamicResource flowlauncher_plugin_program_name}">
+                                <GridViewColumn.CellTemplate>
+                                    <DataTemplate>
+                                        <TextBlock Text="{Binding Name}" />
+                                    </DataTemplate>
+                                </GridViewColumn.CellTemplate>
+                            </GridViewColumn>
+                            <GridViewColumn Width="90" Header="{DynamicResource flowlauncher_plugin_program_status}">
+                                <GridViewColumn.CellTemplate>
+                                    <DataTemplate>
+                                        <TextBlock TextAlignment="Left">
+                                            <TextBlock.Style>
+                                                <Style TargetType="TextBlock">
+                                                    <Setter Property="Text" Value="{DynamicResource flowlauncher_plugin_program_false}" />
+                                                    <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding Enabled, UpdateSourceTrigger=PropertyChanged}" Value="True">
+                                                            <Setter Property="Text" Value="{DynamicResource flowlauncher_plugin_program_true}" />
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </TextBlock.Style>
+                                        </TextBlock>
+                                    </DataTemplate>
+                                </GridViewColumn.CellTemplate>
+                            </GridViewColumn>
+                            <GridViewColumn Header="{DynamicResource flowlauncher_plugin_program_location}">
+                                <GridViewColumn.CellTemplate>
+                                    <DataTemplate>
+                                        <TextBlock Text="{Binding Location}" TextTrimming="CharacterEllipsis" />
+                                    </DataTemplate>
+                                </GridViewColumn.CellTemplate>
+                            </GridViewColumn>
+                        </GridView>
+                    </ListView.View>
+                </ListView>
+                <DockPanel Grid.Row="3">
+                    <StackPanel HorizontalAlignment="Right" Orientation="Horizontal">
+                        <Button
+                            x:Name="btnProgramSourceStatus"
+                            MinWidth="100"
+                            Margin="{StaticResource SettingPanelItemTopBottomMargin}"
+                            Click="btnProgramSourceStatus_OnClick"
+                            Content="{DynamicResource flowlauncher_plugin_program_disable}" />
+                        <Button
+                            x:Name="btnEditProgramSource"
+                            MinWidth="100"
+                            Margin="{StaticResource SettingPanelItemLeftTopBottomMargin}"
+                            Click="btnEditProgramSource_OnClick"
+                            Content="{DynamicResource flowlauncher_plugin_program_edit}" />
+                        <Button
+                            x:Name="btnDeleteProgramSource"
+                            MinWidth="100"
+                            Margin="{StaticResource SettingPanelItemLeftTopBottomMargin}"
+                            Click="btnDeleteProgramSource_OnClick"
+                            Content="{DynamicResource flowlauncher_plugin_program_delete}" />
+                        <Button
+                            x:Name="btnAddProgramSource"
+                            MinWidth="100"
+                            Margin="{StaticResource SettingPanelItemLeftTopBottomMargin}"
+                            Click="btnAddProgramSource_OnClick"
+                            Content="{DynamicResource flowlauncher_plugin_program_add}" />
+                    </StackPanel>
+                </DockPanel>
+            </Grid>
+        </TabItem>
+    </TabControl>
 </UserControl>

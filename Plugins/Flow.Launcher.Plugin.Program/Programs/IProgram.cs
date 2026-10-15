@@ -1,4 +1,4 @@
-﻿using System.Collections.Generic;
+using System.Collections.Generic;
 
 namespace Flow.Launcher.Plugin.Program.Programs
 {
@@ -9,6 +9,8 @@ namespace Flow.Launcher.Plugin.Program.Programs
         string UniqueIdentifier { get; set; }
         string Name { get; }
         string Location { get; }
+        string IcoPath { get; }
         bool Enabled { get; }
+        void Launch(bool asAdmin = false);
     }
 }

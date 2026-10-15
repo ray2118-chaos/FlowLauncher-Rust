@@ -1,11 +1,11 @@
 {
   "ID": "E19B86D491F04B3DA2A590F845C27014",
   "ActionKeywords": [
+    "def",
     "define",
-    "syn",
-    "ant",
     "dict",
-    "*"
+    "syn",
+    "ant"
   ],
   "Name": "Dictionary & Synonyms",
   "Description": "Instant English definitions, phonetic pronunciation, synonyms, and antonyms",

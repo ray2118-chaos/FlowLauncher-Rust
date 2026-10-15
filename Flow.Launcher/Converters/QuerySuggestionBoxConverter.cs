@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Globalization;
 using System.Windows;
 using System.Windows.Controls;
@@ -68,6 +68,23 @@ public class QuerySuggestionBoxConverter : IMultiValueConverter
             selectedItem.QuerySuggestionText = string.Concat(queryText, selectedResultPossibleSuggestion.AsSpan(queryText.Length));
 
             // Check if Text will be larger than our QueryTextBox
+            var offset = queryTextBox.Padding.Right;
+
+            if (Flow.Launcher.Infrastructure.Native.FlowNativeMethods.IsAvailable &&
+                Flow.Launcher.Infrastructure.Native.FlowNativeMethods.MeasureText(
+                    queryTextBox.Text,
+                    queryTextBox.FontFamily?.Source,
+                    (float)queryTextBox.FontSize,
+                    queryTextBox.FontWeight.ToOpenTypeWeight(),
+                    queryTextBox.FontStyle == FontStyles.Italic,
+                    out var metrics))
+            {
+                if (metrics.Width + offset > queryTextBox.ActualWidth || queryTextBox.HorizontalOffset != 0)
+                    return string.Empty;
+
+                return selectedItem.QuerySuggestionText;
+            }
+
             Typeface typeface = new Typeface(queryTextBox.FontFamily, queryTextBox.FontStyle, queryTextBox.FontWeight, queryTextBox.FontStretch);
             var dpi = VisualTreeHelper.GetDpi(queryTextBox);
             var ft = new FormattedText(
@@ -79,8 +96,6 @@ public class QuerySuggestionBoxConverter : IMultiValueConverter
                 Brushes.Black,
                 dpi.PixelsPerDip
             );
-
-            var offset = queryTextBox.Padding.Right;
 
             if (ft.Width + offset > queryTextBox.ActualWidth || queryTextBox.HorizontalOffset != 0)
                 return string.Empty;

@@ -1206,6 +1206,12 @@ namespace Flow.Launcher
         {
             _isArrowKeyPressed = true;
 
+            // Clear any active dismiss animations
+            RootWindowBorder?.BeginAnimation(UIElement.OpacityProperty, null);
+            WindowTranslateTransform?.BeginAnimation(TranslateTransform.YProperty, null);
+            WindowScaleTransform?.BeginAnimation(ScaleTransform.ScaleXProperty, null);
+            WindowScaleTransform?.BeginAnimation(ScaleTransform.ScaleYProperty, null);
+
             var animationLength = _settings.AnimationSpeed switch
             {
                 AnimationSpeeds.Slow => 560,
@@ -1334,6 +1340,64 @@ namespace Flow.Launcher
                 {
                     RootWindowBorder.Opacity = 1.0;
                 }
+            }
+        }
+
+        public async Task PlayDismissAnimationAsync()
+        {
+            if (!_settings.UseAnimation || RootWindowBorder == null || WindowTranslateTransform == null)
+            {
+                return;
+            }
+
+            var animationLength = _settings.AnimationSpeed switch
+            {
+                AnimationSpeeds.Slow => 200,
+                AnimationSpeeds.Medium => 140,
+                AnimationSpeeds.Fast => 90,
+                _ => Math.Min(140, _settings.CustomAnimationLength)
+            };
+            var duration = TimeSpan.FromMilliseconds(animationLength);
+
+            try
+            {
+                var opacityAnim = NativeAnimation.CreateDoubleAnimation(
+                    RootWindowBorder.Opacity,
+                    0.0,
+                    duration,
+                    NativeAnimationCurve.FluidGlassRefract);
+
+                var translateYAnim = NativeAnimation.CreateDoubleAnimation(
+                    WindowTranslateTransform.Y,
+                    6.0,
+                    duration,
+                    NativeAnimationCurve.SpringFluid);
+
+                var scaleXAnim = NativeAnimation.CreateDoubleAnimation(
+                    WindowScaleTransform?.ScaleX ?? 1.0,
+                    0.97,
+                    duration,
+                    NativeAnimationCurve.SpringFluid);
+
+                var scaleYAnim = NativeAnimation.CreateDoubleAnimation(
+                    WindowScaleTransform?.ScaleY ?? 1.0,
+                    0.97,
+                    duration,
+                    NativeAnimationCurve.SpringFluid);
+
+                RootWindowBorder.BeginAnimation(UIElement.OpacityProperty, opacityAnim);
+                WindowTranslateTransform.BeginAnimation(TranslateTransform.YProperty, translateYAnim);
+                if (WindowScaleTransform != null)
+                {
+                    WindowScaleTransform.BeginAnimation(ScaleTransform.ScaleXProperty, scaleXAnim);
+                    WindowScaleTransform.BeginAnimation(ScaleTransform.ScaleYProperty, scaleYAnim);
+                }
+
+                await Task.Delay(animationLength);
+            }
+            catch
+            {
+                // In case of interruption, fail gracefully
             }
         }
 

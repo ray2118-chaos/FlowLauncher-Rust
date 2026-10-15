@@ -245,21 +245,21 @@ namespace Flow.Launcher.Test
         }
 
         [Test]
-        public void ResolveIconPackPath_Windows10Pack_ResolvesCorrectly()
+        public void ResolveIconPackPath_DefaultPack_ResolvesCorrectly()
         {
             try
             {
-                ImageLoader.ActiveIconPack = "Windows10";
+                ImageLoader.ActiveIconPack = "Default";
                 var resolvedCalc = ImageLoader.ResolveIconPackPath("calc.exe");
-                Assert.That(resolvedCalc, Does.Contain("Windows10"));
+                Assert.That(resolvedCalc, Does.Contain("Default"));
                 Assert.That(resolvedCalc, Does.EndWith("calculator.png"));
 
                 var resolvedLnk = ImageLoader.ResolveIconPackPath("C:\\Users\\User\\AppData\\Roaming\\Microsoft\\Windows\\Start Menu\\Programs\\Visual Studio Code\\Visual Studio Code.lnk");
-                Assert.That(resolvedLnk, Does.Contain("Windows10"));
+                Assert.That(resolvedLnk, Does.Contain("Default"));
                 Assert.That(resolvedLnk, Does.EndWith("vscode.png"));
 
                 var resolvedWeb = ImageLoader.ResolveIconPackPath("Plugins\\Flow.Launcher.Plugin.WebSearch\\Images\\web_search.png");
-                Assert.That(resolvedWeb, Does.Contain("Windows10"));
+                Assert.That(resolvedWeb, Does.Contain("Default"));
                 Assert.That(resolvedWeb, Does.EndWith("Browser.png"));
             }
             finally
@@ -269,13 +269,13 @@ namespace Flow.Launcher.Test
         }
 
         [Test]
-        public void ResolveIconPackPath_Windows11Pack_ResolvesCorrectly()
+        public void ResolveIconPackPath_LegacyWindows11Mapping_ResolvesToDefault()
         {
             try
             {
                 ImageLoader.ActiveIconPack = "Windows11";
                 var resolvedCalc = ImageLoader.ResolveIconPackPath("calculator.png");
-                Assert.That(resolvedCalc, Does.Contain("Windows11"));
+                Assert.That(resolvedCalc, Does.Contain("Default"));
                 Assert.That(resolvedCalc, Does.EndWith("calculator.png"));
             }
             finally

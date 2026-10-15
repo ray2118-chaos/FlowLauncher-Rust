@@ -1,8 +1,7 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Reflection;
 using Flow.Launcher.Plugin.Calculator;
-using Mages.Core;
 using NUnit.Framework;
 using NUnit.Framework.Legacy;
 
@@ -19,13 +18,6 @@ namespace Flow.Launcher.Test.Plugins
             ShowErrorMessage = false, // Make sure we return the empty results when error occurs
             UseThousandsSeparator = true // Default value
         };
-        private readonly Engine _engine = new(new Configuration
-        {
-            Scope = new Dictionary<string, object>
-            {
-                { "e", Math.E }, // e is not contained in the default mages engine
-            }
-        });
 
         public CalculatorPluginTest()
         {
@@ -35,11 +27,6 @@ namespace Flow.Launcher.Test.Plugins
             if (settingField == null)
                 Assert.Fail("Could not find field '_settings' on Flow.Launcher.Plugin.Calculator.Main");
             settingField.SetValue(_plugin, _settings);
-
-            var engineField = typeof(Main).GetField("MagesEngine", BindingFlags.NonPublic | BindingFlags.Static);
-            if (engineField == null)
-                Assert.Fail("Could not find static field 'MagesEngine' on Flow.Launcher.Plugin.Calculator.Main");
-            engineField.SetValue(null, _engine);
         }
 
         [Test]

@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.IO;
 using System.Threading;
 using System.Windows;
@@ -16,6 +16,29 @@ namespace Flow.Launcher
         public ResultListBox()
         {
             InitializeComponent();
+            AddHandler(ScrollViewer.ScrollChangedEvent, new ScrollChangedEventHandler(OnScrollChanged));
+        }
+
+        public static readonly DependencyProperty TopIndexProperty =
+            DependencyProperty.Register(nameof(TopIndex), typeof(int), typeof(ResultListBox), new UIPropertyMetadata(0));
+
+        public int TopIndex
+        {
+            get => (int)GetValue(TopIndexProperty);
+            set => SetValue(TopIndexProperty, value);
+        }
+
+        private void OnScrollChanged(object sender, ScrollChangedEventArgs e)
+        {
+            if (e.OriginalSource is ScrollViewer sv)
+            {
+                var top = (int)Math.Max(0, Math.Round(sv.VerticalOffset));
+                TopIndex = top;
+                if (DataContext is ResultsViewModel vm)
+                {
+                    vm.TopIndex = top;
+                }
+            }
         }
 
         public static readonly DependencyProperty RightClickResultCommandProperty =

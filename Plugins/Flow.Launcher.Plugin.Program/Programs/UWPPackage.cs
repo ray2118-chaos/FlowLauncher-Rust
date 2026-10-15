@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
@@ -69,6 +69,42 @@ namespace Flow.Launcher.Plugin.Program.Programs
 
             try
             {
+                if (Flow.Launcher.Infrastructure.Native.FlowNativeMethods.IsAvailable)
+                {
+                    var manifestPath = Path.Combine(Location, "AppxManifest.xml");
+                    if (File.Exists(manifestPath))
+                    {
+                        Span<Flow.Launcher.Infrastructure.Native.NativeUwpAppInfo> nativeApps = stackalloc Flow.Launcher.Infrastructure.Native.NativeUwpAppInfo[16];
+                        int nativeCount = Flow.Launcher.Infrastructure.Native.FlowNativeMethods.ParseUwpManifest(manifestPath, nativeApps);
+                        if (nativeCount > 0)
+                        {
+                            foreach (var app in Apps)
+                            {
+                                var id = app.UserModelId.Split('!')[1];
+                                for (int i = 0; i < nativeCount; i++)
+                                {
+                                    if (string.Equals(nativeApps[i].GetAppId(), id, StringComparison.OrdinalIgnoreCase))
+                                    {
+                                        app.CanRunElevated = nativeApps[i].CanElevate != 0;
+                                        var logoUri = nativeApps[i].GetLogoUri();
+                                        if (!string.IsNullOrEmpty(logoUri))
+                                        {
+                                            app.LogoPath = app.LogoPathFromUri(logoUri, (64, 64));
+                                        }
+                                        var previewUri = nativeApps[i].GetPreviewUri();
+                                        if (!string.IsNullOrEmpty(previewUri))
+                                        {
+                                            app.PreviewImagePath = app.LogoPathFromUri(previewUri, (256, 256));
+                                        }
+                                        break;
+                                    }
+                                }
+                            }
+                            return;
+                        }
+                    }
+                }
+
                 var xmlDoc = GetManifestXml();
                 if (xmlDoc == null)
                 {
@@ -377,6 +413,8 @@ namespace Flow.Launcher.Plugin.Program.Programs
         public bool Enabled { get; set; } = false;
         public bool CanRunElevated { get; set; } = false;
         public string LogoPath { get; set; } = string.Empty;
+        [MemoryPackIgnore]
+        public string IcoPath => LogoPath;
         public string PreviewImagePath { get; set; } = string.Empty;
 
         [MemoryPackConstructor]
@@ -508,8 +546,9 @@ namespace Flow.Launcher.Plugin.Program.Programs
             return contextMenus;
         }
 
-        private void Launch(bool elevated = false)
+        public void Launch(bool asAdmin = false)
         {
+            bool elevated = asAdmin && CanRunElevated;
             string command = "shell:AppsFolder\\" + UserModelId;
             command = Environment.ExpandEnvironmentVariables(command.Trim());
 

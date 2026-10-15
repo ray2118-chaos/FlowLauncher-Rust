@@ -6,6 +6,7 @@ using System.Runtime.InteropServices;
 using System.Text.Json;
 using System.Threading.Tasks;
 using System.Windows;
+using Flow.Launcher.Infrastructure.Native;
 using Flow.Launcher.Plugin;
 
 namespace Flow.Launcher.Plugin.Emoji
@@ -23,7 +24,8 @@ namespace Flow.Launcher.Plugin.Emoji
             string CodePoint,
             string IconPath,
             bool HasColorIcon,
-            string[] Keywords);
+            string[] Keywords,
+            string KeywordsJoined);
 
         private readonly List<EmojiItem> _items = new();
 
@@ -66,6 +68,7 @@ namespace Flow.Launcher.Plugin.Emoji
                             var fullIconPath = Path.Combine(_pluginDir, relIcon);
                             var hasIcon = File.Exists(fullIconPath);
 
+                            var kwArr = m.keywords.ToArray();
                             _items.Add(new EmojiItem(
                                 Glyph: m.glyph,
                                 Name: m.name,
@@ -73,7 +76,8 @@ namespace Flow.Launcher.Plugin.Emoji
                                 CodePoint: m.codePoint,
                                 IconPath: hasIcon ? relIcon : DefaultIconPath,
                                 HasColorIcon: hasIcon,
-                                Keywords: m.keywords.ToArray()
+                                Keywords: kwArr,
+                                KeywordsJoined: string.Join(" ", kwArr)
                             ));
                         }
                     }
@@ -154,7 +158,8 @@ namespace Flow.Launcher.Plugin.Emoji
                     CodePoint: b.CodePoint,
                     IconPath: DefaultIconPath,
                     HasColorIcon: false,
-                    Keywords: b.Keywords
+                    Keywords: b.Keywords,
+                    KeywordsJoined: string.Join(" ", b.Keywords)
                 ));
             }
         }
@@ -180,52 +185,64 @@ namespace Flow.Launcher.Plugin.Emoji
                 return results;
             }
 
+            bool useNative = FlowNativeMethods.IsAvailable;
             foreach (var item in _items)
             {
-                var nameMatch = _context?.API.FuzzySearch(search, item.Name);
-                var score = nameMatch?.Score ?? 0;
+                int score;
+                List<int>? highlightData = null;
 
-                // Exact glyph query (e.g. paste emoji to search for its name)
-                if (item.Glyph == search)
+                if (useNative)
                 {
-                    score = Math.Max(score, 500);
+                    score = FlowNativeMethods.ScoreEmoji(item.Glyph, item.Name, search, item.KeywordsJoined);
                 }
-                else if (item.Name.Equals(search, StringComparison.OrdinalIgnoreCase))
+                else
                 {
-                    score = Math.Max(score, 400);
-                }
-                else if (item.Name.StartsWith(search, StringComparison.OrdinalIgnoreCase))
-                {
-                    score = Math.Max(score, 300);
-                }
-                else if (item.Name.Contains(search, StringComparison.OrdinalIgnoreCase))
-                {
-                    score = Math.Max(score, 250);
-                }
+                    var nameMatch = _context?.API.FuzzySearch(search, item.Name);
+                    score = nameMatch?.Score ?? 0;
+                    highlightData = nameMatch?.MatchData;
 
-                foreach (var kw in item.Keywords)
-                {
-                    if (kw.Equals(search, StringComparison.OrdinalIgnoreCase))
+                    // Exact glyph query (e.g. paste emoji to search for its name)
+                    if (item.Glyph == search)
                     {
-                        score = Math.Max(score, 350);
-                        break;
+                        score = Math.Max(score, 500);
                     }
-                    else if (kw.StartsWith(search, StringComparison.OrdinalIgnoreCase))
+                    else if (item.Name.Equals(search, StringComparison.OrdinalIgnoreCase))
                     {
-                        score = Math.Max(score, 220);
+                        score = Math.Max(score, 400);
                     }
-                    else if (kw.Contains(search, StringComparison.OrdinalIgnoreCase))
+                    else if (item.Name.StartsWith(search, StringComparison.OrdinalIgnoreCase))
                     {
-                        score = Math.Max(score, 160);
+                        score = Math.Max(score, 300);
+                    }
+                    else if (item.Name.Contains(search, StringComparison.OrdinalIgnoreCase))
+                    {
+                        score = Math.Max(score, 250);
+                    }
+
+                    foreach (var kw in item.Keywords)
+                    {
+                        if (kw.Equals(search, StringComparison.OrdinalIgnoreCase))
+                        {
+                            score = Math.Max(score, 350);
+                            break;
+                        }
+                        else if (kw.StartsWith(search, StringComparison.OrdinalIgnoreCase))
+                        {
+                            score = Math.Max(score, 220);
+                        }
+                        else if (kw.Contains(search, StringComparison.OrdinalIgnoreCase))
+                        {
+                            score = Math.Max(score, 160);
+                        }
                     }
                 }
 
                 if (score > 0)
                 {
                     var res = CreateResult(item, score);
-                    if (nameMatch?.MatchData != null)
+                    if (highlightData != null)
                     {
-                        res.TitleHighlightData = nameMatch.MatchData;
+                        res.TitleHighlightData = highlightData;
                     }
                     results.Add(res);
                 }

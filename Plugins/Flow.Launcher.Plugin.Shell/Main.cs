@@ -1,10 +1,11 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
+using Flow.Launcher.Infrastructure.Native;
 using Flow.Launcher.Plugin.SharedCommands;
 using Flow.Launcher.Plugin.Shell.Views;
 using WindowsInput;
@@ -45,7 +46,10 @@ namespace Flow.Launcher.Plugin.Shell
                 {
                     string basedir = null;
                     string dir = null;
-                    string excmd = Environment.ExpandEnvironmentVariables(cmd);
+                    string excmd = FlowNativeMethods.IsAvailable
+                        ? FlowNativeMethods.ExpandEnvironmentVariables(cmd)
+                        : Environment.ExpandEnvironmentVariables(cmd);
+
                     if (Directory.Exists(excmd) && (cmd.EndsWith('/') || cmd.EndsWith('\\')))
                     {
                         basedir = excmd;
@@ -60,12 +64,30 @@ namespace Flow.Launcher.Plugin.Shell
 
                     if (basedir != null)
                     {
-                        var autocomplete =
-                            Directory.GetFileSystemEntries(basedir)
-                                .Select(o => dir + Path.GetFileName(o))
-                                .Where(o => o.StartsWith(cmd, StringComparison.OrdinalIgnoreCase) &&
-                                            !results.Any(p => o.Equals(p.Title, StringComparison.OrdinalIgnoreCase)) &&
-                                            !results.Any(p => o.Equals(p.Title, StringComparison.OrdinalIgnoreCase))).ToList();
+                        List<string> autocomplete = [];
+                        if (FlowNativeMethods.IsAvailable)
+                        {
+                            Span<NativeShellEntry> buffer = stackalloc NativeShellEntry[64];
+                            var count = FlowNativeMethods.AutocompleteDirectory(basedir, null, buffer);
+                            for (int i = 0; i < count; i++)
+                            {
+                                var name = buffer[i].GetName();
+                                var full = dir + name;
+                                if (full.StartsWith(cmd, StringComparison.OrdinalIgnoreCase) &&
+                                    !results.Any(p => full.Equals(p.Title, StringComparison.OrdinalIgnoreCase)))
+                                {
+                                    autocomplete.Add(full);
+                                }
+                            }
+                        }
+                        else
+                        {
+                            autocomplete =
+                                Directory.GetFileSystemEntries(basedir)
+                                    .Select(o => dir + Path.GetFileName(o))
+                                    .Where(o => o.StartsWith(cmd, StringComparison.OrdinalIgnoreCase) &&
+                                                !results.Any(p => o.Equals(p.Title, StringComparison.OrdinalIgnoreCase))).ToList();
+                        }
 
                         autocomplete.Sort();
 

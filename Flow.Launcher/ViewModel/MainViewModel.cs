@@ -493,7 +493,18 @@ namespace Flow.Launcher.ViewModel
             var results = SelectedResults;
             if (index is not null)
             {
-                results.SelectedIndex = int.Parse(index);
+                if (int.TryParse(index, out var relativeIndex))
+                {
+                    var targetIndex = results.TopIndex + relativeIndex;
+                    if (targetIndex >= 0 && targetIndex < results.Results.Count && relativeIndex < 5)
+                    {
+                        results.SelectedIndex = targetIndex;
+                    }
+                    else
+                    {
+                        return;
+                    }
+                }
             }
 
             var result = results.SelectedItem?.Result;
@@ -2150,10 +2161,15 @@ namespace Flow.Launcher.ViewModel
                 }
             }
 
+            // Play smooth dismiss fade-out animation if enabled
+            if (Settings.UseAnimation && !_isDialogJump && Application.Current?.MainWindow is MainWindow mw && mw.IsVisible)
+            {
+                await mw.PlayDismissAnimationAsync();
+            }
+
             // When application is exiting, the Application.Current will be null
             Application.Current?.Dispatcher.Invoke(() =>
             {
-                // When application is exiting, the Application.Current will be null
                 if (Application.Current?.MainWindow is MainWindow mainWindow)
                 {
                     // Set clock and search icon opacity
@@ -2169,7 +2185,7 @@ namespace Flow.Launcher.ViewModel
                     mainWindow.ClockPanel.UpdateLayout();
                     mainWindow.SearchIcon.UpdateLayout();
 
-                    // 📌 Apply DWM Cloak (Completely hide the window)
+                    // 📌 Apply DWM Cloak after dismiss animation finishes
                     Win32Helper.DWMSetCloakForWindow(mainWindow, true);
                 }
             }, DispatcherPriority.Render);
@@ -2186,9 +2202,6 @@ namespace Flow.Launcher.ViewModel
                 Win32Helper.HideTaskbar();
                 _taskbarShownByFlow = false;
             }
-
-            // Delay for a while to make sure clock will not flicker
-            await Task.Delay(50);
 
             // Update WPF properties
             MainWindowVisibilityStatus = false;

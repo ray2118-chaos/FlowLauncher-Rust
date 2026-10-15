@@ -73,7 +73,10 @@
                             Visibility="{Binding Settings.ShowOpenResultHotkey, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}">
                             <Border x:Name="HotkeyBG" Style="{DynamicResource ItemHotkeyBGStyle}">
                                 <Border.Visibility>
-                                    <Binding Converter="{StaticResource ResourceKey=OpenResultHotkeyVisibilityConverter}" RelativeSource="{RelativeSource Mode=FindAncestor, AncestorType=ListBoxItem}" />
+                                    <MultiBinding Converter="{StaticResource ResourceKey=OpenResultHotkeyVisibilityConverter}">
+                                        <Binding RelativeSource="{RelativeSource Mode=FindAncestor, AncestorType=ListBoxItem}" />
+                                        <Binding Path="DataContext.TopIndex" RelativeSource="{RelativeSource Mode=FindAncestor, AncestorType=ListBox}" />
+                                    </MultiBinding>
                                 </Border.Visibility>
                                 <TextBlock
                                     x:Name="Hotkey"
@@ -82,9 +85,10 @@
                                     VerticalAlignment="Center"
                                     Style="{DynamicResource ItemHotkeyStyle}">
                                     <TextBlock.Text>
-                                        <MultiBinding StringFormat="{}{0}+{1}">
+                                        <MultiBinding Converter="{StaticResource ResourceKey=OrdinalConverter}">
                                             <Binding Mode="OneWay" Path="Settings.OpenResultModifiers" />
-                                            <Binding Converter="{StaticResource ResourceKey=OrdinalConverter}" RelativeSource="{RelativeSource Mode=FindAncestor, AncestorType=ListBoxItem}" />
+                                            <Binding RelativeSource="{RelativeSource Mode=FindAncestor, AncestorType=ListBoxItem}" />
+                                            <Binding Path="DataContext.TopIndex" RelativeSource="{RelativeSource Mode=FindAncestor, AncestorType=ListBox}" />
                                         </MultiBinding>
                                     </TextBlock.Text>
                                 </TextBlock>

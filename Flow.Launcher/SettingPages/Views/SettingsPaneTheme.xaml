@@ -542,7 +542,7 @@
             <ui:SettingsCard
                 Margin="0 4 0 0"
                 Header="Icon Pack"
-                Description="Select an icon pack (Auto matches theme, Windows 10, Monochrome, Windows 11)">
+                Description="Select an icon pack (Auto matches theme, Default, Monochrome)">
                 <ui:SettingsCard.HeaderIcon>
                     <ui:FontIcon Glyph="&#xEB9F;" />
                 </ui:SettingsCard.HeaderIcon>
@@ -920,23 +920,6 @@
                     SelectedValuePath="Value" />
             </ui:SettingsCard>
 
-            <!--  Icon pack selection  -->
-            <ui:SettingsCard
-                Margin="0 14 0 0"
-                Header="Icon Pack"
-                Description="Select icon pack style or automatically match theme">
-                <ui:SettingsCard.HeaderIcon>
-                    <ui:FontIcon Glyph="&#xEB9F;" />
-                </ui:SettingsCard.HeaderIcon>
-
-                <ComboBox
-                    MinWidth="180"
-                    DisplayMemberPath="Display"
-                    FontSize="14"
-                    ItemsSource="{Binding IconPacks}"
-                    SelectedValue="{Binding SelectedIconPack, Mode=TwoWay}"
-                    SelectedValuePath="Value" />
-            </ui:SettingsCard>
 
             <!--  Theme folder  -->
             <ui:SettingsCard Margin="0 14 0 0" Header="{DynamicResource ThemeFolder}">
