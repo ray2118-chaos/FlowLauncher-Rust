@@ -1,4 +1,4 @@
-# Flow Launcher (Rust Edition) ⚡🦀
+# Flow Launcher-Rust
 
 A fast, lightweight fork of [Flow Launcher](https://github.com/Flow-Launcher/Flow.Launcher) powered by a high-performance **Rust** native backend, while maintaining 100% compatibility with Flow Launcher's C# and community plugin ecosystem.
 
