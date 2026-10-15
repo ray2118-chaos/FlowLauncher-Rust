@@ -1,0 +1,18 @@
+{
+  "ID": "E19B86D491F04B3DA2A590F845C27014",
+  "ActionKeywords": [
+    "define",
+    "syn",
+    "ant",
+    "dict",
+    "*"
+  ],
+  "Name": "Dictionary & Synonyms",
+  "Description": "Instant English definitions, phonetic pronunciation, synonyms, and antonyms",
+  "Author": "Flow-Launcher",
+  "Version": "1.0.0",
+  "Language": "csharp",
+  "Website": "https://github.com/Flow-Launcher/Flow.Launcher",
+  "IcoPath": "Images\\icon.png",
+  "ExecuteFileName": "Flow.Launcher.Plugin.Dictionary.dll"
+}

@@ -1,0 +1,17 @@
+{
+  "ID": "B837E941E95C42A197D6A74C4BD9845E",
+  "ActionKeywords": [
+    "remind",
+    "timer",
+    "water",
+    "*"
+  ],
+  "Name": "Reminders & Timers",
+  "Description": "Natural language reminders, focus timers, and daily hydration tracker",
+  "Author": "Flow-Launcher",
+  "Version": "1.0.0",
+  "Language": "csharp",
+  "Website": "https://github.com/Flow-Launcher/Flow.Launcher",
+  "IcoPath": "Images\\icon.png",
+  "ExecuteFileName": "Flow.Launcher.Plugin.Remind.dll"
+}
